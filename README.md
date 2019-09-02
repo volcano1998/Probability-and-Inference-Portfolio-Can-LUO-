@@ -6,3 +6,5 @@ https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree
 
 
 week2 assignment
+
+https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/02-monte-carlo-erro
