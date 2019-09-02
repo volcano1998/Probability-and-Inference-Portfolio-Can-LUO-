@@ -1,0 +1,95 @@
+---
+title: "monte-carlo-error"
+output: html_notebook
+---
+
+
+1. What is monte-carlo-error? 
+
+
+   Monte-carlo-error (MCE) is the statistical error when applying monte-carlo simulation with computer. To understand MCE specifically, you may also want to know what monte-carlo-method(MCM) is.
+   
+   Monte Carlo methods, or Monte Carlo experiments, are a broad class of computational algorithms that rely on repeated random sampling to obtain numerical results. The underlying concept is to use randomness to solve problems that might be deterministic in principle. They are often used in physical and mathematical problems and are most useful when it is difficult or impossible to use other approaches. Monte Carlo methods are mainly used in three problem classes: optimization, numerical integration, and generating draws from a probability distribution.[1]
+   
+   For a simple example, when you want to know what many times the head will be up when flipping a fair coin 10000 times, you can do a Monte-carlo-simulaition  in you laptop, which can give you a fundamental estimation. 
+   
+   There is some more complex application of  MCM : https://en.wikipedia.org/wiki/Monte_Carlo_method .
+   
+   
+
+2. How does the error comes up? Why do we need to estimate the error?
+
+
+   In the coin experiment, though a fair coin it is, it will show more or less than 5000 times of head-up in 10000 trials, because probability is theoretical and can only be exact in a infinite situation.
+   
+   Hence, the monte-carlo-error comes from the limitation of extant algorithom ,computer and time-budeget.
+   
+   When we try to apply monte-carlo-method, we always want to know the accuracy and elevate it, therefore the analysis of MCE comes into our view .
+   
+
+
+3.How can we estimate the monte-carlo-error?
+
+  Usually we can use average squred error or stantard deviation. In this simulation, we use absolute and relative error to estimate.
+  p̂ denote the probability estimated from simulation, and let p denote the true underlying probability. Calculate error as
+
+absolute error = |p̂−p|
+
+and
+
+relative error = |p̂−p|/p.
+
+Based on this, I performed a 14 X 5 factorial experiment simulation that estimates the error for each combination of replicate number (22, 23, …, 215) and probability (0.01, 0.05, 0.10, 0.25, 0.50). And my result is as below.
+
+ Firstly this is the absolute error illustration. The x-axis denotes log2(replicate number) , y-axis denotes the absolute error and variable denotes different theoretical probability.
+
+
+
+```{r}
+
+a<-0.01*c(1:5)
+initial<-rep(NA,14)
+abs_error<-rel_error<-data.frame(initial,initial,initial,initial,initial)
+names(abs_error)<-a
+names(rel_error)<-a
+for (i in seq_along(initial)){
+  for (j in 1:5){R=2**i
+p=0.01*j
+p_hat<-rbinom(100000,R,p)/R
+abs_error[i,j]<-mean(abs(p-p_hat))
+rel_error[i,j]<-mean(abs(p-p_hat)/p)
+  }}
+
+
+
+abs_error$log2repeattimes<-x<-c(2:15)
+rel_error$log2repeattimes<-x<-c(2:15)
+abs_error
+library(ggplot2)
+library(reshape2)
+df<-melt(abs_error,id.vars="log2repeattimes")
+ggplot(df,aes(x=log2repeattimes,y=value) )+geom_line(aes(color=variable)) 
+
+```
+ Secondly this is the relative error illustration. The x-axis denotes log2(replicate number) , y-axis denotes the relative error and variable denotes different theoretical probability.
+ 
+ 
+```{r}
+df1<-melt(rel_error,id.vars="log2repeattimes")
+ggplot(df1,aes(x=log2repeattimes,y=value) )+geom_line(aes(color=variable)) 
+```
+
+4. What is the conclusion?
+
+
+   As we could see from two illustration, the error decreas as the repeat number goes up. Hence, if we want to upgrade the accuracy of monte-carlo-methods, we need to adjust the repeat number of simulation til the accuracy meets our demand.
+   
+   
+   
+   
+   
+   
+Reference:
+
+
+[1]from wikipedia https://en.wikipedia.org/wiki/Monte_Carlo_method
