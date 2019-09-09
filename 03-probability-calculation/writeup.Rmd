@@ -25,7 +25,7 @@ In this blog ,I will list an example of the Braves and the Yankees, to show you 
 What is the probability that the Braves win the World Series given that PB=0.55?
 
 
-This question can be solved by negative binomial random variable.The number of failures before the Kth success in a Bernoulli sequence is a negative binomial random variable. The function dnbinom could give the probability of specific negative binomial random variable.
+This question can be solved by negative binomial random variable.The number of failures before the Kth success in a Bernoulli sequence is a negative binomial random variable. The function pbinom could give the probability of specific negative binomial random variable.
 
 
 In this case,we know that: P(Braves win)=P(Braves win in 4 games)+P(Braves win in 5 games)+P(Braves win in 6 games)+P(Braves win in 7 games). P(Braves win in X games) is a negative binomial random variable, which means Braves fail X-4 times before Xth success. So we can calculate the answer in following function.
@@ -37,12 +37,10 @@ winprob<-function(p,l) {
   w=ceiling(l/2)
   wp<-0
   for (f in 0:l-w){
-    wp<-wp+dnbinom(f,w,p)
-  }
+    wp<-wp+dnbinom(f,w,p)}
   wp
 }
 pbwin<-winprob(pb,7)
-
 ```
 And the answer is 0.6082878.
 
@@ -67,7 +65,6 @@ axis(1)
 axis(2)
 box()
 title(xlab = "PB~x", ylab = "P(Braves win World Series)~y", line = 2)
-
 d<-data.frame(pb=pb,pwin=pwin)
 ```
 We can see from the figure that in best-of-7 series, the worse team(PB<0.5), has less probability to win the series than win a single game.
