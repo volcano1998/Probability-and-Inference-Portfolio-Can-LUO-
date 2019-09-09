@@ -1,0 +1,217 @@
+---
+title: "How Often Does the Better Team Win the World Series?"
+author: "Can Luo"
+date: "`r format(Sys.time(), '%9/%8/%2019')`"
+output: html_notebook
+---
+
+
+
+The world series is a best-of-7 match-up between the champions of the American and National Leagues of Major League Baseball. The competence of a team can be specified by the probability of winning in a single game.If we collect a team's past  game records  , we can get a general winning probability of that team. Then, using statistical theory , we can get a lot of predictions and insights about the game.
+
+In this blog ,I will list an example of the Braves and the Yankees, to show you how statistics and probability works in games prediction and how often the better team win the world series.
+
+ <font size="6"> Basic Supposing</font> 
+ 
+1.Braves and the Yankees are teams competing in the World Series.
+
+2.In any given game, the probability that the Braves win is PB and the probability that the Yankees win is PY=1-PB.
+
+
+<font size="6"> Prediction and Analysis</font> 
+
+<font size="5"> Prediction I</font> 
+
+What is the probability that the Braves win the World Series given that PB=0.55?
+
+
+This question can be solved by negative binomial random variable.The number of failures before the Kth success in a Bernoulli sequence is a negative binomial random variable. The function dnbinom could give the probability of specific negative binomial random variable.
+
+
+In this case,we know that: P(Braves win)=P(Braves win in 4 games)+P(Braves win in 5 games)+P(Braves win in 6 games)+P(Braves win in 7 games). P(Braves win in X games) is a negative binomial random variable, which means Braves fail X-4 times before Xth success. So we can calculate the answer in following function.
+
+```{r}
+pb<-0.55
+py<-1-pb
+winprob<-function(p,l) {
+  w=round(l/2)
+  wp<-0
+  for (f in 0:l-w){
+    wp<-wp+dnbinom(f,w,p)
+  }
+  wp
+}
+pbwin<-winprob(pb,7)
+```
+And the answer is 0.6082878.
+
+<font size="5"> Prediction II</font> 
+
+<font weight=bold>What is the probability that the Braves win the World Series given that PB=x? </font>
+
+
+Changing the value of PB, repeating the process above and making a graph,we can see the output below.
+
+```{r}
+pb<-0.01*seq(1:100)
+pwin<-rep(NA,100)
+for (i in seq_along(pwin)){
+  pwin[i]<-winprob(pb[i],7)
+}
+plot.new()
+plot.window(xlim=range(pb),ylim=range(pwin))
+lines(pb,pwin,pch=5,lwd=1,col="red",type="b",text(1,0.95,"y=x"))
+lines(pb,pb,type="l")
+axis(1)
+axis(2)
+box()
+title(xlab = "PB~x", ylab = "P(Braves win World Series)~y", line = 2)
+
+d<-data.frame(pb=pb,pwin=pwin)
+```
+We can see from the figure that in best-of-7 series, the worse team(PB<0.5), has less probability to win the series than win a single game.
+The better team(PB>0.5)'s advantage is enhanced in best-of-7 series. This demonstrates that best-of-7 can distinguish good team from bad team. 
+
+<font size="5"> Prediction III</font> 
+
+Suppose one could change the World Series to be best-of-9 or some other best-of-X series. What is the shortest series length so that P(Braves win World Series|PB=.55)≥0.8?
+
+
+
+Based on the X must be an odd number and more than 1, we do the test below in function 'shortest'.
+```{r}
+shortest<-function(p,trynumber,pt){
+  for (i in seq_along(trynumber)){
+  pwin<-winprob(p,trynumber[i])
+  if (pwin>=pt){return(trynumber[i])}
+  }
+}
+#shortest(0.55,l<-seq(1:100)*2+1,0.8)
+```
+best-of-5 is the shortest length which can make the probabilty of brave's winning larger than 0.8.
+
+
+
+<font size="5"> Prediction IV</font> 
+
+What is the shortest series length so that P(Braves win World Series|PB=x)≥0.8? 
+
+To solve this, firstly let us do a pre-experiment about PB , P(Braves win ) and best-of-X.
+```{r}
+#testp is a function to explore the relationship between P(Braves win World Series) and best-of-x  in defferent PB
+testp <- function(pb, m) {
+  l <- seq(1:m) * 2 + 1
+  pwin <- rep(NA, m)
+  for (i in seq_along(pwin)) {
+    pwin[i] <- winprob(pb, l[i])
+  }
+  best_of_x <- l
+  plot.new()
+  plot.window(xlim = range(l), ylim = range(pwin))
+  lines(l,
+        pwin,
+        pch = 5,
+        lwd = 1,
+        col = "red")
+  text(2, pwin[4], paste("PB=", as.character(pb)), pos = 4)
+  axis(1)
+  axis(2)
+  box()
+  title(xlab = "best-of-x" ,
+        ylab = "P(Braves win)" ,
+        line = 2)
+}
+par(mfrow=c(2,2))
+testp(0.20,100)
+testp(0.40,100)
+testp(0.50,100)
+testp(0.60,100)
+
+
+```
+From the graphs above we can tell that when PB<=0.5, P(Braves win world series) shows a roughly declining trend as the series length goes longer. When PB>0.5,P(Braves win world series) shows a roughly increasing trend as the series length goes longer.
+
+And we can prove that when PB>=5, there must be one point in the graph making P(Braves win world series)>=0.8. Hence, we do the formal test with PB in the safe range of (0.5,1).
+
+
+```{r}
+pb<-0.01*seq(1:50)+0.49
+sl<-rep(NA,50)
+l<-seq(1:100)*2+1
+for (i in seq_along(pb)){
+  sl[i]<-shortest(pb[i],l,0.8)
+}
+d<-data.frame(pb=pb,shortestlength=sl)
+plot(d,ylab="Shortest series length",ylim=range(sl),xlab="PB",xlim=range(pb),type="l",col="red")
+```
+
+When PB=0.5~0.71, the shortest series length to make P(Braves win)>=0.8 is 5.
+
+When PB=0.72~0.99, the shortest series length to make P(Braves win)>=0.8 is 3.
+
+
+<font size="5"> Prediction V</font> 
+
+What is the value of  P(PB=0.55|Braves win World Series in 7 games) under the assumption that either PB=0.55 or PB=0.45?
+
+
+From Bayes Rule, we can know that:
+
+P(braves win in 7 games)=P(braves win in 7 games|PB=0.45)*P(PB=0.45)+P(braves win in 7 games|PB=0.55)*P(PB=0.55)
+
+P(PB=0.55|braves win world series in 7 games)=P(braves win in 7 games|PB=0.55)*P(PB=0.55)/P(braves win in 7 games)
+
+However, we do not know the value of P(PB=0.55). What I can present is a graph which shows different value of  P(PB=0.55|Braves win World Series in 7 games) according to different P(PB=0.55).
+
+
+```{r}
+#p55: P(PB=0.55)
+#p45: P(PB=0.45)
+#p55+p45=1
+p55<-0.01*seq(1:100)
+p<-rep(NA,length(p55))
+for (i in seq_along(p55)){
+p[i]<-dnbinom(3,4,0.55)*p55[i]/(dnbinom(3,4,0.55)*p55[i]+dnbinom(3,4,0.45)*(1-p55[i]))
+}
+#plot(p55,p)
+d<-data.frame(p55=p55,p=p)
+plot.new()
+plot.window(xlim=range(p55),ylim=range(p))
+lines(p55,p,pch=5,lwd=1,col="red",type="p")
+axis(1)
+axis(2)
+box()
+title(xlab = "P(PB=0.55)", ylab = "P(PB=0.55|Braves win in 7 games) ", line = 2)
+```
+
+
+The line is slightly curly, not 100% linear.
+
+
+
+<font size="5"> Conclusion</font> 
+
+1. Best-of-x game is a tricky format of competition, since the better team not always own more possibility to win.
+2. We can use the genneral winning probability to recommand a desirable length of game for a team.
+4. When the length of games increases, the better team seems to win with more possibility , which complies to our common sense.
+5. When the length of games is less than 7, the real competence of a better team is hard to show off(eg: Prediction IV , graphs of pre-test). Hence, to be fair, at least a best-of-7 series are neccessary to judge two teams.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
