@@ -77,6 +77,7 @@ Suppose one could change the World Series to be best-of-9 or some other best-of-
 
 
 Based on the X must be an odd number and more than 1, we do the test below in function 'shortest'.
+
 ```{r}
 shortest<-function(p,trynumber,pt){
   for (i in seq_along(trynumber)){
@@ -86,6 +87,7 @@ shortest<-function(p,trynumber,pt){
 }
 shortest(0.55,l<-seq(1:100)*2+1,0.8)
 ```
+
 best-of-71 is the shortest length which can make the probabilty of brave's winning larger than 0.8.
 
 
