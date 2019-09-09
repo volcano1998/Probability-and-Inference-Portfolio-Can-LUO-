@@ -34,7 +34,7 @@ In this case,we know that: P(Braves win)=P(Braves win in 4 games)+P(Braves win i
 pb<-0.55
 py<-1-pb
 winprob<-function(p,l) {
-  w=round(l/2)
+  w=ceiling(l/2)
   wp<-0
   for (f in 0:l-w){
     wp<-wp+dnbinom(f,w,p)
@@ -42,6 +42,7 @@ winprob<-function(p,l) {
   wp
 }
 pbwin<-winprob(pb,7)
+
 ```
 And the answer is 0.6082878.
 
@@ -60,7 +61,7 @@ for (i in seq_along(pwin)){
 }
 plot.new()
 plot.window(xlim=range(pb),ylim=range(pwin))
-lines(pb,pwin,pch=5,lwd=1,col="red",type="b",text(1,0.95,"y=x"))
+lines(pb,pwin,pch=5,lwd=1,col="red",type="l",text(1,0.95,"y=x"))
 lines(pb,pb,type="l")
 axis(1)
 axis(2)
@@ -86,9 +87,9 @@ shortest<-function(p,trynumber,pt){
   if (pwin>=pt){return(trynumber[i])}
   }
 }
-#shortest(0.55,l<-seq(1:100)*2+1,0.8)
+shortest(0.55,l<-seq(1:100)*2+1,0.8)
 ```
-best-of-5 is the shortest length which can make the probabilty of brave's winning larger than 0.8.
+best-of-71 is the shortest length which can make the probabilty of brave's winning larger than 0.8.
 
 
 
@@ -121,23 +122,26 @@ testp <- function(pb, m) {
         ylab = "P(Braves win)" ,
         line = 2)
 }
-par(mfrow=c(2,2))
+par(mfrow=c(2,3))
 testp(0.20,100)
 testp(0.40,100)
 testp(0.50,100)
+testp(0.51,100)
+testp(0.55,100)
 testp(0.60,100)
 
 
-```
-From the graphs above we can tell that when PB<=0.5, P(Braves win world series) shows a roughly declining trend as the series length goes longer. When PB>0.5,P(Braves win world series) shows a roughly increasing trend as the series length goes longer.
 
-And we can prove that when PB>=5, there must be one point in the graph making P(Braves win world series)>=0.8. Hence, we do the formal test with PB in the safe range of (0.5,1).
+```
+From the graphs above we can tell that when PB<=0.5, P(Braves win world series) shows a  declining trend as the series length goes longer. When PB>0.5,P(Braves win world series) shows a  increasing trend as the series length goes longer.
+
+And we can prove that when PB>=5, there must be one point in the graph making P(Braves win world series)>=0.8. Hence, we do the formal test with PB in the safe range of (0.51,1).
 
 
 ```{r}
-pb<-0.01*seq(1:50)+0.49
+pb<-0.01*seq(1:50)+0.5
 sl<-rep(NA,50)
-l<-seq(1:100)*2+1
+l<-seq(1:1000)*2+1
 for (i in seq_along(pb)){
   sl[i]<-shortest(pb[i],l,0.8)
 }
@@ -145,9 +149,7 @@ d<-data.frame(pb=pb,shortestlength=sl)
 plot(d,ylab="Shortest series length",ylim=range(sl),xlab="PB",xlim=range(pb),type="l",col="red")
 ```
 
-When PB=0.5~0.71, the shortest series length to make P(Braves win)>=0.8 is 5.
-
-When PB=0.72~0.99, the shortest series length to make P(Braves win)>=0.8 is 3.
+When PB increase, the shortest series length to make P(Braves win)>=0.8 is declining to 3.
 
 
 <font size="5"> Prediction V</font> 
@@ -191,7 +193,7 @@ The line is slightly curly, not 100% linear.
 
 <font size="5"> Conclusion</font> 
 
-1. Best-of-x game is a tricky format of competition, since the better team not always own more possibility to win.
+1. Best-of-x game is a fair format of competition, since the better team always own more possibility to win.
 2. We can use the genneral winning probability to recommand a desirable length of game for a team.
 4. When the length of games increases, the better team seems to win with more possibility , which complies to our common sense.
 5. When the length of games is less than 7, the real competence of a better team is hard to show off(eg: Prediction IV , graphs of pre-test). Hence, to be fair, at least a best-of-7 series are neccessary to judge two teams.
