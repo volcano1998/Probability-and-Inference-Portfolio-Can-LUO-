@@ -15,6 +15,9 @@ output:
     fig_height: 6
     fig_caption: true
 ---
+The world series is a best-of-7 match-up between the champions of the American and National Leagues of Major League Baseball. The competence of a team can be specified by the probability of winning in a single game.If we collect a team's past  game records  , we can get a general winning probability of that team. Then, using statistical theory , we can get a lot of predictions and insights about the game.
+
+Let's see how statistics and probability works in games prediction and how often the better team win the world series through an example of the Braves and the Yankees.
 
 # Basic Supposing
  
