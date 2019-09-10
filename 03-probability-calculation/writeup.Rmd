@@ -2,25 +2,30 @@
 title: "How Often Does the Better Team Win the World Series?"
 author: "Can Luo"
 date: "`r format(Sys.time(), '%9/%8/%2019')`"
-output: html_notebook
+output: 
+  html_notebook:
+    theme: journal
+    highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
 ---
 
-
-
-The  world series is a best-of-7 match-up between the champions of the American and National Leagues of Major League Baseball. The competence of a team can be specified by the probability of winning in a single game.If we collect a team's past  game records  , we can get a general winning probability of that team. Then, using statistical theory , we can get a lot of predictions and insights about the game.
-
-In this blog ,I will list an example of the Braves and the Yankees, to show you how statistics and probability works in games prediction and how often the better team win the world series.
-
- <font size="6"> Basic Supposing</font> 
+# Basic Supposing
  
 1.Braves and the Yankees are teams competing in the World Series.
 
 2.In any given game, the probability that the Braves win is PB and the probability that the Yankees win is PY=1-PB.
 
 
-<font size="6"> Prediction and Analysis</font> 
+# Prediction and Analysis
 
-<font size="5"> Prediction I</font> 
+## Prediction I
 
 What is the probability that the Braves win the World Series given that PB=0.55?
 
@@ -29,6 +34,7 @@ This question can be solved by negative binomial random variable.The number of f
 
 
 In this case,we know that: P(Braves win)=P(Braves win in 4 games)+P(Braves win in 5 games)+P(Braves win in 6 games)+P(Braves win in 7 games). P(Braves win in X games) is a negative binomial random variable, which means Braves fail X-4 times before Xth success. So we can calculate the answer in following function.
+
 
 ```{r}
 pb<-0.55
@@ -42,16 +48,18 @@ winprob<-function(p,l) {
 }
 pbwin<-winprob(pb,7)
 ```
+
+
 And the answer is 0.6082878.
 
-<font size="5"> Prediction II</font> 
+##  Prediction II 
 
-<font weight=bold>What is the probability that the Braves win the World Series given that PB=x? </font>
+What is the probability that the Braves win the World Series given that PB=x? 
 
 
 Changing the value of PB, repeating the process above and making a graph,we can see the output below.
 
-```{r}
+```{r cols.print=3, rows.print=3}
 pb<-0.01*seq(1:100)
 pwin<-rep(NA,100)
 for (i in seq_along(pwin)){
@@ -67,10 +75,12 @@ box()
 title(xlab = "PB~x", ylab = "P(Braves win World Series)~y", line = 2)
 d<-data.frame(pb=pb,pwin=pwin)
 ```
+
+
 We can see from the figure that in best-of-7 series, the worse team(PB<0.5), has less probability to win the series than win a single game.
 The better team(PB>0.5)'s advantage is enhanced in best-of-7 series. This demonstrates that best-of-7 can distinguish good team from bad team. 
 
-<font size="5"> Prediction III</font> 
+## Prediction III
 
 Suppose one could change the World Series to be best-of-9 or some other best-of-X series. What is the shortest series length so that P(Braves win World Series|PB=.55)≥0.8?
 
@@ -92,7 +102,7 @@ best-of-71 is the shortest length which can make the probabilty of brave's winni
 
 
 
-<font size="5"> Prediction IV</font> 
+## Prediction IV
 
 What is the shortest series length so that P(Braves win World Series|PB=x)≥0.8? 
 
@@ -151,7 +161,7 @@ plot(d,ylab="Shortest series length",ylim=range(sl),xlab="PB",xlim=range(pb),typ
 When PB increase, the shortest series length to make P(Braves win)>=0.8 is declining to 3.
 
 
-<font size="5"> Prediction V</font> 
+## Prediction V 
 
 What is the value of  P(PB=0.55|Braves win World Series in 7 games) under the assumption that either PB=0.55 or PB=0.45?
 
@@ -190,22 +200,12 @@ The line is slightly curly, not 100% linear.
 
 
 
-<font size="5"> Conclusion</font> 
+# Conclusion
 
 1. Best-of-x game is a fair format of competition, since the better team always own more possibility to win.
 2. We can use the genneral winning probability to recommand a desirable length of game for a team.
 4. When the length of games increases, the better team seems to win with more possibility , which complies to our common sense.
 5. When the length of games is less than 7, the real competence of a better team is hard to show off(eg: Prediction IV , graphs of pre-test). Hence, to be fair, at least a best-of-7 series are neccessary to judge two teams.
-
-
-
-
-
-
-
-
-
-
 
 
 
