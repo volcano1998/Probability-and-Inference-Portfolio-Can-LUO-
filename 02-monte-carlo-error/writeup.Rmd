@@ -1,10 +1,23 @@
 ---
-title: "monte-carlo-error"
-output: html_notebook
+title: "Monte-carlo-error Analysis "
+author: "Can Luo"
+date: "`r format(Sys.time(), '%9/%14/%2019')`"
+output: 
+  html_notebook:
+    theme: journal
+    highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
 ---
 
 
-1. What is monte-carlo-error? 
+# Monte-carlo-error
 
 
    Monte-carlo-error (MCE) is the statistical error when applying monte-carlo simulation with computer. To understand MCE specifically, you may also want to know what monte-carlo-method(MCM) is.
@@ -17,7 +30,7 @@ output: html_notebook
    
    
 
-2. How does the error comes up? Why do we need to estimate the error?
+# How does the error comes up? Why do we need to estimate the error?
 
 
    In the coin experiment, though a fair coin it is, it will show more or less than 5000 times of head-up in 10000 trials, because probability is theoretical and can only be exact in a infinite situation.
@@ -28,7 +41,7 @@ output: html_notebook
    
 
 
-3.How can we estimate the monte-carlo-error?
+# How can we estimate the monte-carlo-error?
 
   Usually we can use average squred error or stantard deviation. In this simulation, we use absolute and relative error to estimate.
   p̂ denote the probability estimated from simulation, and let p denote the true underlying probability. Calculate error as
@@ -41,55 +54,92 @@ relative error = |p̂−p|/p.
 
 Based on this, I performed a 14 X 5 factorial experiment simulation that estimates the error for each combination of replicate number (22, 23, …, 215) and probability (0.01, 0.05, 0.10, 0.25, 0.50). And my result is as below.
 
- Firstly this is the absolute error illustration. The x-axis denotes log2(replicate number) , y-axis denotes the absolute error and variable denotes different theoretical probability.
+ 
+
+```{r}
+library(dplyr)
+ss1<-expand.grid(N=2^(2:15)
+            ,p=c(0.5,0.25,.1,.05,.01)
+            ,mae=NA_real_
+            ,mre=NA_real_
+            ) 
+
+
+
+one_calc <- function (N,p){
+  Y<-rbinom(100000,N,p)
+  phat<-Y/N
+  abs_error<-abs(phat-p)
+  rel_error<-abs_error/p
+  c(mean(abs_error),mean(rel_error))
+}
+```
+
 
 
 
 ```{r}
+for (i in 1:nrow(ss1)){
+  ss1[i,c("mae","mre")]<-one_calc(ss1[i,"N"],ss1[i,"p"])
+}
 
-a<-0.01*c(1:5)
-initial<-rep(NA,14)
-abs_error<-rel_error<-data.frame(initial,initial,initial,initial,initial)
-names(abs_error)<-a
-names(rel_error)<-a
-for (i in seq_along(initial)){
-  for (j in 1:5){R=2**i
-p=0.01*j
-p_hat<-rbinom(100000,R,p)/R
-abs_error[i,j]<-mean(abs(p-p_hat))
-rel_error[i,j]<-mean(abs(p-p_hat)/p)
-  }}
+myplot<-function(ss1,colu,yname){
+   l1<-ss1 %>% split(.$p)
+palette(RColorBrewer::brewer.pal(5,"Set1"))
+plot.new()
+plot.window(xlim=c(0,15),ylim=range(ss1[,colu]))
+for(j in seq_along(l1)){
+  lines(l1[[j]][,"xlog2"],l1[[j]][,colu],type="b",pch=16,col=j,lwd=3)
+  text(x=2,y=l1[[j]][,colu][1],labels=l1[[j]]$p[1],pos=2)
+}
+axis(1,2:15,2^(2:15)) # second is the position. the third is the label
+axis(2)
+box()
+title(xlab = parse(text = "N~(log[2]~scale)"), ylab = parse(text=yname), line = 2)
+}
+
+?text
 
 
-
-abs_error$log2repeattimes<-x<-c(2:15)
-rel_error$log2repeattimes<-x<-c(2:15)
-abs_error
-library(ggplot2)
-library(reshape2)
-df<-melt(abs_error,id.vars="log2repeattimes")
-ggplot(df,aes(x=log2repeattimes,y=value) )+geom_line(aes(color=variable)) 
-
+ss1$xlog2<-log2(ss1$N)
+yname<-"Absolute~Error"
+colu<-"mae"
+myplot(ss1,colu,yname)
 ```
- Secondly this is the relative error illustration. The x-axis denotes log2(replicate number) , y-axis denotes the relative error and variable denotes different theoretical probability.
+
  
  
 ```{r}
-df1<-melt(rel_error,id.vars="log2repeattimes")
-ggplot(df1,aes(x=log2repeattimes,y=value) )+geom_line(aes(color=variable)) 
+yname<-"Relative~Error"
+colu<-"mre"
+myplot(ss1,colu,yname)
 ```
 
-4. What is the conclusion?
+
+```{r}
+ss1$ylog10<-log10(ss1$mae)
+yname<-"Absolute~Error~(log[10]~scale)"
+colu<-"ylog10"
+myplot(ss1,colu,yname)
+```
+
+```{r}
+ss1$ylog10<-log10(ss1$mre)
+yname<-"Relative~Error~(log[10]~scale)"
+colu<-"ylog10"
+myplot(ss1,colu,yname)
+```
+# conclusion
 
 
-   As we could see from two illustration, the error decreas as the repeat number goes up. Hence, if we want to upgrade the accuracy of monte-carlo-methods, we need to adjust the repeat number of simulation til the accuracy meets our demand.
+   As we could see from  graphs above, the error decreas as the repeat number goes up. Hence, if we want to upgrade the accuracy of monte-carlo-methods, we need to adjust the repeat number of simulation til the accuracy meets our demand.
    
    
    
    
    
    
-Reference:
+# Reference:
 
 
 [1]from wikipedia https://en.wikipedia.org/wiki/Monte_Carlo_method
