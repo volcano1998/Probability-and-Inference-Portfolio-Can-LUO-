@@ -4,23 +4,23 @@ author: "Can Luo"
 date: "`r format(Sys.time(), '%9/%14/%2019')`"
 output: 
   html_notebook:
-    theme: journal
+    theme: spacelab
     highlight: zenburn
     code_folding: hide
     toc: true
     toc_depth: 3
     toc_float: true
-    number_sections: true
+    #number_sections: true
     fig_width: 70
     fig_height: 6
     fig_caption: true
 ---
 
 
-# Monte-carlo-error
+# Introduction
 
 
-   Monte-carlo-error (MCE) is the statistical error when applying monte-carlo simulation with computer. To understand MCE specifically, you may also want to know what monte-carlo-method(MCM) is.
+   **Monte-carlo-error** (MCE) is the statistical error when applying monte-carlo simulation with computer. To understand MCE specifically, you may also want to know what monte-carlo-method(MCM) is.
    
    Monte Carlo methods, or Monte Carlo experiments, are a broad class of computational algorithms that rely on repeated random sampling to obtain numerical results. The underlying concept is to use randomness to solve problems that might be deterministic in principle. They are often used in physical and mathematical problems and are most useful when it is difficult or impossible to use other approaches. Monte Carlo methods are mainly used in three problem classes: optimization, numerical integration, and generating draws from a probability distribution.[1]
    
@@ -56,7 +56,7 @@ Based on this, I performed a 14 X 5 factorial experiment simulation that estimat
 
  
 
-```{r}
+```{r echo=T, results='hide'}
 library(dplyr)
 ss1<-expand.grid(N=2^(2:15)
             ,p=c(0.5,0.25,.1,.05,.01)
@@ -75,8 +75,9 @@ one_calc <- function (N,p){
 }
 ```
 
+***
 
-
+> Figure 1  Abosolute Error
 
 ```{r}
 for (i in 1:nrow(ss1)){
@@ -98,9 +99,6 @@ box()
 title(xlab = parse(text = "N~(log[2]~scale)"), ylab = parse(text=yname), line = 2)
 }
 
-?text
-
-
 ss1$xlog2<-log2(ss1$N)
 yname<-"Absolute~Error"
 colu<-"mae"
@@ -108,28 +106,53 @@ myplot(ss1,colu,yname)
 ```
 
  
- 
+> Figure 2  Relative Error
+
 ```{r}
 yname<-"Relative~Error"
 colu<-"mre"
 myplot(ss1,colu,yname)
 ```
 
+> Figure 3  Abosolute Error (log[10]scale)
 
 ```{r}
+myplot_1<-function(ss1,colu,yname,t){
+   
+   l1<-ss1 %>% split(.$p)
+palette(RColorBrewer::brewer.pal(5,"Set1"))
+plot.new()
+plot.window(xlim=c(0,15),ylim=range(ss1[,colu]))
+for(j in seq_along(l1)){
+  lines(l1[[j]][,"xlog2"],l1[[j]][,colu],type="b",pch=16,col=j,lwd=3)
+  text(x=2,y=t[j],labels=l1[[j]]$p[1],pos=2)
+}
+axis(1,2:15,2^(2:15)) # second is the position. the third is the label
+axis(2)
+box()
+title(xlab = parse(text = "N~(log[2]~scale)"), ylab = parse(text=yname), line = 2)
+}
+t<-c(-1.72,-1.09,-0.95,-0.82,-0.7)
 ss1$ylog10<-log10(ss1$mae)
+l1<-ss1 %>% split(.$p)
 yname<-"Absolute~Error~(log[10]~scale)"
 colu<-"ylog10"
-myplot(ss1,colu,yname)
+myplot_1(ss1,colu,yname,t)
 ```
+
+> Figure 4  Relative Error (log[10]scale)
 
 ```{r}
 ss1$ylog10<-log10(ss1$mre)
+t<-c(0.31,0.18,0.05,-0.198,-0.4258)
 yname<-"Relative~Error~(log[10]~scale)"
 colu<-"ylog10"
-myplot(ss1,colu,yname)
+myplot_1(ss1,colu,yname,t)
 ```
-# conclusion
+
+***
+
+# Conclusion
 
 
    As we could see from  graphs above, the error decreas as the repeat number goes up. Hence, if we want to upgrade the accuracy of monte-carlo-methods, we need to adjust the repeat number of simulation til the accuracy meets our demand.
@@ -139,7 +162,7 @@ myplot(ss1,colu,yname)
    
    
    
-# Reference:
+# Reference
 
 
-[1]from wikipedia https://en.wikipedia.org/wiki/Monte_Carlo_method
+[1]From wikipedia https://en.wikipedia.org/wiki/Monte_Carlo_method
