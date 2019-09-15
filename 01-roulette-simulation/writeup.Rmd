@@ -1,0 +1,324 @@
+---
+title: "Does Martingle strategy really work in Roulette?"
+author: "Can Luo"
+date: "`r format(Sys.time(), '%9/%15/%2019')`"
+output: 
+  html_notebook:
+    theme: yeti
+    highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    #number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
+---
+
+
+
+A roulette table composed of 38 (or 37) evenly sized pockets on a wheel. The pockets are colored red, black, or green. The pockets are also numbered. Roulette is a game of chance in which a pocket is randomly selected. Gamblers may wager on several aspects of the outcome. For example, one may place a wager that the randomly selected pocket will be red or odd numbered or will be a specific number.
+
+In this blog, we note that there are 38 pockets of which 2 are green, 18 are red, and 18 are black. The payout for a bet on black (or red) is $1 for each $1 wagered. This means that if a gambler bets $1 on black and the randomly selected pocket is black, then the gambler will get the original $1 wager and an additional $1 as winnings.
+
+There are lots of strategies about roulette. And what we focus on is the Martingale strategy(https://github.com/thomasgstewart/data-science-5620/blob/master/deliverables/01-roulette.md), which appears to always end in positive earnings, regardless of how unlucky a string of spins may be. Is the strategy actually profitable?
+
+Now let computer simulation tell us the truth.
+
+
+
+
+# I Function Parts
+
+---------------------
+Summary of parameters
+---------------------
+
+| Parameter | Description                     |             Starting value             |
+|:---------:|:--------------------------------|:--------------------------------------:|
+|   **B**   | Starting budget                 |                  $200                  |
+|   **W**   | Winnings threshold for stopping | $300 (Starting budget + $100 winnings) |
+|   **L**   | Time threshold for stopping     |               1000 plays               |
+|   **M**   | Casino’s maximum wager          |                  $100                  |
+
+Basically we need these functions below.
+
+
+
+```{r}
+
+
+library(dplyr)
+one_play <- function(state){
+  
+    
+    proposed_wager <- ifelse(state$previous_win, 1, 2*state$previous_wager)
+    wager <- min(proposed_wager, state$M, state$B)
+    
+    
+    red <- rbinom(1,1,18/38)
+    
+    
+    state$plays <- state$plays + 1
+    state$previous_wager <- wager
+    if(red){
+      
+      state$B <- state$B + wager
+      state$previous_win <- TRUE
+    }else{
+      
+      state$B <- state$B - wager
+      state$previous_win <- FALSE
+    }
+  state
+}
+
+
+
+stop_play <- function(state){
+  if(state$B <= 0) return(TRUE)
+  if(state$plays >= state$L) return(TRUE)
+  if(state$B >= state$W) return(TRUE)
+  FALSE
+}
+
+
+
+one_series <- function(
+    B = 200
+  , W = 300
+  , L = 1000
+  , M = 100
+){
+
+  # initial state
+  state <- list(
+    B = B
+  , W = W
+  , L = L
+  , M = M
+  , plays = 0
+  , previous_wager = 0
+  , previous_win = TRUE
+  )
+  
+ 
+  budget <- rep(NA, L)
+  
+
+  for(i in 1:L){
+    new_state <- state %>% one_play
+    budget[i] <- new_state$B
+    if(new_state %>% stop_play){
+      return(budget[1:i])
+    }
+    state <- new_state
+  }
+  budget    
+}
+get_last <- function(x) x[length(x)] 
+
+
+```
+
+
+
+
+
+# II One Single Simulation
+
+Then let's do one simulation,which will show  how the gamblers earnings (or losses) evolve over a series of wagers at the roulette wheel. (The x-axis will be the wager number (or play number), the y-axis will be earnings.)
+
+
+```{r}
+budget<-one_series(B = 200, W = 300, L = 1000, M = 100)
+x<-c(1:length(budget))
+plot(x,budget)
+```
+
+
+Let’s see if the simulation repeats 1000 times, how the walk-out money distributes.
+
+
+```{r}
+
+walk_out_money <- rep(NA, 1000)
+for(j in seq_along(walk_out_money)){
+  walk_out_money[j] <- one_series(B = 200, W = 300, L = 1000, M = 100) %>% get_last
+}
+
+
+hist(walk_out_money, breaks = 100)
+```
+
+# III Numbers of play
+
+Since there are 3 stopping rules below:
+
+A player will use the above strategy and play until
+  1.the player has W dollars
+  2.the player goes bankrupt
+  3.the player completes L wagers (or plays)
+  
+The simulation will stop according to the rules and the distribution of number of plays in amounts of simulation is as follows.
+
+```{r}
+
+number_of_plays <- rep(NA, 1000)
+for(j in seq_along(number_of_plays)){
+  number_of_plays[j] <-one_series(B = 200, W = 300, L = 1000, M = 100) %>%length
+}
+
+
+hist(number_of_plays,breaks=10)
+```
+
+As you can see, the number of plays can be 200~250 times in most frequency.
+
+# IV Changing Parameters
+
+Let’s change the wager threshold.
+
+```{r}
+
+#operating characteristics
+# Simulation about M
+m<-c(1:15)
+m<-m*50
+output<-rep(NA,length(m))
+for (i in 1:length(m)){
+  
+  walk_out_money <- rep(NA, 1000)
+  #play_number<- rep(NA, 100)
+  for(j in seq_along(walk_out_money)){
+    budget<-one_series(B = 100, W = 300, L = 1000, M =m[i])
+    walk_out_money[j] <-budget %>%get_last
+    #play_number[j]<-length(budget)
+  }
+  
+  # Estimated probability of walking out with extra cash
+  mean(walk_out_money > 200)
+  
+  # Estimated earnings
+  output[i]<-mean(walk_out_money - 200)
+}
+earning<-output
+Maxwager<-m
+plot(Maxwager,earning)
+```
+
+As you can see, there is no outstanding relationship between maxwager and average earnings.
+
+Let’s change the winning threshold.
+
+```{r}
+# Simulation about W
+m<-c(4:10)
+m<-m*50
+output<-rep(NA,length(m))
+for (i in 1:length(m)){
+  
+  walk_out_money <- rep(NA, 1000)
+  #play_number<- rep(NA, 100)
+  for(j in seq_along(walk_out_money)){
+    budget<-one_series(B = 100, W = m[i], L = 1000, M =100)
+    walk_out_money[j] <-budget %>%get_last
+    #play_number[j]<-length(budget)
+  }
+  
+  # Estimated probability of walking out with extra cash
+  mean(walk_out_money > 200)
+  
+  # Estimated earnings
+  output[i]<-mean(walk_out_money - 200)
+}
+earning<-output
+Winning<-m
+plot(Winning,earning)
+```
+
+As you can see. The average earnings decline when the winning threshold increases. It also means do not be greedy when applying this strategy.
+
+Let’s change the limitation of number of plays.
+
+```{r}
+# Simulation about L
+m<-c(1:10)
+m<-m*200
+output<-rep(NA,length(m))
+for (i in 1:length(m)){
+  
+  walk_out_money <- rep(NA, 1000)
+  #play_number<- rep(NA, 100)
+  for(j in seq_along(walk_out_money)){
+    budget<-one_series(B = 100, W = 300, L = m[i], M =100)
+    walk_out_money[j] <-budget %>%get_last
+    #play_number[j]<-length(budget)
+  }
+  
+  # Estimated probability of walking out with extra cash
+  mean(walk_out_money > 200)
+  
+  # Estimated earnings
+  output[i]<-mean(walk_out_money - 200)
+}
+earning<-output
+Lengthofplay<-m
+plot(Lengthofplay,earning)
+```
+
+It seems  the average earnings decrease as the length of play increase.
+
+Let’s change the starting budget.
+
+```{r}
+# Simulation about B
+m<-c(1:15)
+m<-m*50
+output<-rep(NA,length(m))
+for (i in 1:length(m)){
+  
+  walk_out_money <- rep(NA, 1000)
+  #play_number<- rep(NA, 100)
+  for(j in seq_along(walk_out_money)){
+    budget<-one_series(B = m[i], W = m[i]+100, L = 1000, M =100)
+    walk_out_money[j] <-budget %>%get_last
+    #play_number[j]<-length(budget)
+  }
+  
+  # Estimated probability of walking out with extra cash
+  mean(walk_out_money > 200)
+  
+  # Estimated earnings
+  output[i]<-mean(walk_out_money - m[i])
+}
+earning<-output
+budget<-m
+plot(budget,earning)
+```
+
+When the starting budget increases,the average earning declines.
+
+# V Operating Characteristics
+
+From the simulation above, we can tell that the starting budget and winning threshold influence the average earning while the lengyh of play and maximum wager do not. So when applying this strategy, one should place emphasis on the two operating characteristics: starting budget and winning threshold.
+
+# VI limitation of simulation
+
+There is some limitation of simulation below. 1.The number of simulation is limited so we can get the absolutely precise output of average earnings. 2.The simulation can show the output but we still don’t know the machanism and logic behind the strategy.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
