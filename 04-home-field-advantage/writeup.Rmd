@@ -292,7 +292,7 @@ We can see that whether difference between possiblity of with and without home a
 ```{r}
 hfi<-c(0,0,1,1,1,0,0)
 pb<-0.55
-af<-seq(1:10)*0.05
+af<-seq(1:10)*0.05+1
 diff_1<-rep(NA,length(af))
 reldiff_1<-rep(NA,length(af))
 for (i in seq_along(af)){
