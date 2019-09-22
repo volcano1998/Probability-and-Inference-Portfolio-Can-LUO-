@@ -1,0 +1,210 @@
+---
+title: "Which quantiles of a continuous distribution can one estimate with more precision?"
+author: Can LUO
+date: "`r format(Sys.time(), '%9/%22/%2019')`"
+output: 
+  html_notebook:
+    theme: spacelab
+    #highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    #number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
+---
+
+
+
+# How much precision could the simulative distribution  reach?
+
+Some frequently used distributions, such as normal standard distribution ,exponential distribution , beta distribution can be simulated by specific functions in base R . These functions are  convinient ,while their output has some differency with theoretical distribution. And in different quantiles, the precision of simulation is varying. Fortunately, we can do pre-experiment, which outputs sampling distribution, giving us insights about which quantiles of a continuous distribution can we estimate with more precision.
+
+The figures below show the precision of simulation in varying quantiles of continous distributions. For every distribution, the first figure shows the middle 95% of the sampling distribution of different quantiles( the quantiles are discribed by probobility) , and the second figure shows the same content but with quantiles discribed by density.
+
+From two kinds of figures, we can see the precision of simulation . The larger the length is, the lower the precision is.  And looking at both figures, we can tell the relative precision in different probability or density.
+
+
+## Distribution 1
+**standard normal distribution**
+```{r}
+
+mid95<-function(RFUN,QFUN,DFUN,N){
+p<-seq(1:19)*0.05
+l1<-rep(NA,19)
+for (i in seq_along(p)){
+  quantile_vector<-rep(NA,10000)
+  for (j in  seq_along(quantile_vector)){
+    x<-RFUN(N)
+    quantile_vector[j]<-quantile(x,p[i])
+  }
+  l1[i]<-abs(quantile(quantile_vector,0.975)-quantile(quantile_vector,0.025))
+}
+df<-data.frame(p,l=l1,d=DFUN(QFUN(p)))
+}
+
+df1<-mid95(rnorm,qnorm,dnorm,200)
+
+par(mfrow=c(1,2),mai=c(.8,.8,.1,.1))
+
+myplot<-function(df){
+plot(x=df$p,y=df$l,xlab='Pth quantile',ylab='Length',type='b',main='Length of middle 95% of sampling distn')
+plot(x=df$d,y=df$l,xlab='Density',ylab='Length',type='p',main='Length of middle 95% of sampling distn')
+}
+
+myplot(df1)
+#ggplot(df1,aes(p,l))+geom_point()+geom_line()
+#ggplot(df1,aes(d,l))+geom_point()+geom_line()
+
+
+
+```
+
+In the first figure, in the two ends of Pth quantile axis, the value of length is relatively large while it is smaller in the middle.
+In the second figure, it shows a declining of length when density is becoming larger.
+
+
+
+
+
+
+## Distribution 2
+**the exponential distribution with rate = 1**
+
+
+
+```{r}
+df2<-mid95(rexp,qexp,dexp,200)
+#ggplot(df2,aes(p,l))+geom_point()+geom_line()
+#ggplot(df2,aes(d,l))+geom_point()+geom_line()
+myplot(df2)
+```
+
+## Distribution 3
+**mixture distribution 1**
+
+```{r}
+rf3 <- function(N){
+  G <- sample(0:2, N, replace = TRUE, prob = c(5,3,2))
+  (G==0)*rnorm(N) + (G==1)*rnorm(N,4) + (G==2)*rnorm(N,-4,2)
+}
+pf3 <- function(x){
+  .5*pnorm(x) + .3*pnorm(x,4) + .2*pnorm(x,-4,2)
+}
+df3 <- function(x){
+  .5*dnorm(x) + .3*dnorm(x,4) + .2*dnorm(x,-4,2)
+}
+
+pfq<-function(q,p){
+  pf3(q)-p
+}  
+
+qf3<-function(p){
+  for (i in seq_along(p)){
+p[i]<-uniroot(pfq,c(-2000,20000),p=p[i]) [[1]] 
+  }
+  p
+}
+
+
+
+df_3<-mid95(rf3,qf3,df3,200)
+#ggplot(df_3,aes(p,l))+geom_point()+geom_line()
+#ggplot(df_3,aes(d,l))+geom_point()+geom_line()
+
+myplot(df_3)
+
+```
+## Distribution 4
+**mixture distribution 2**
+
+```{r}
+rf4 <- function(N){
+  G <- sample(0:1, N, replace = TRUE)
+  (G==0)*rbeta(N,5,1) + (G==1)*rbeta(N,1,5)
+}
+pf4 <- function(x){
+  .5*pbeta(x,5,1) + .5*pbeta(x,1,5) 
+}
+df4<-function(N){
+  .5*dbeta(N,5,1) + .5*dbeta(N,1,5) 
+}
+pfq4<-function(q,p){
+  pf4(q)-p
+}  
+qf4<-function(p){
+  for (i in seq_along(p)){
+  p[i]<-uniroot(pfq4,c(-2000,20000),p=p[i]) [[1]] 
+  }
+  p 
+}
+
+
+
+df_4<-mid95(rf4,qf4,df4,200)
+myplot(df_4)
+#ggplot(df_4,aes(p,l))+geom_point()+geom_line()
+#ggplot(df_4,aes(d,l))+geom_point()+geom_line()
+
+```
+
+# Which quantile is more reliable ?
+
+For every distibution, its simulative precision fluctuates as the quantile changes.  Now we list the  quantile with higher precision, quantile with lower precision,quantile with tightest sampling distribution and shortest sampling length for each distribution, which gives us a clear summary.
+
+```{r}
+library(tidyverse)
+findhp<-function(df){
+  op1<-df %>% 
+  arrange(by=l)
+  op1$p[[1]]
+}
+findlp<-function(df){
+  op1<-df %>% 
+  arrange(by=l)
+  op1$p[[19]]
+}
+findst<-function(df){
+  op1<-df %>% 
+  arrange(by=l)
+  op1$l[[1]]
+}
+
+dis<-c('standard normal distribution','exponential distribution','mixture distribution 1','mixture distribution2')
+hp<-c(findhp(df1),findhp(df2),findhp(df_3),findhp(df_4))
+lp<-c(findlp(df1),findlp(df2),findlp(df_3),findlp(df_4))
+st<-c(findst(df1),findst(df2),findst(df_3),findst(df_4))
+
+summa<-data.frame(dis=dis,hp=hp,lp=lp,tsd=hp,st=st)
+names(summa)<-c('distribution','pth quantile with higher precision','pth quantile with lower precision','pth quantile with tightest sampling distribution','shortest length')
+summa
+```
+
+
+
+# How can we enhance the precision in smulation?
+
+We choose the normal distribution as example  and change the size in one single simulation. We can see that when size becomes larger, the precision improves remarkably, which implies that we could upgrade the size to make sure the accuracy when simulating.
+
+```{r}
+df5<-mid95(rnorm,qnorm,dnorm,400)
+df6<-mid95(rnorm,qnorm,dnorm,800)
+df7<-mid95(rnorm,qnorm,dnorm,1600)
+lens<-list(df1$l,df5$l,df6$l,df7$l)
+plot.new()
+plot.window(xlim=c(0,1),ylim=range(purrr::flatten(lens)))
+for(j in 1:4){
+  lines(df1$p,lens[[j]],type="b",pch=16,col=j,lwd=3)
+  text(x=df1$p[1],y=lens[[j]][1],labels=j*200,pos=2)
+}
+axis(1) # second is the position. the third is the label
+axis(2)
+box()
+title(xlab = parse(text = "P[th]~quantile"), ylab = 'length', line = 2)
+```
+
+
+
+
