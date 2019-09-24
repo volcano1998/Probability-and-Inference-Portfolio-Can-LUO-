@@ -18,3 +18,7 @@ https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree
 week4 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/04-home-field-advantage
+
+week5 assignment
+
+https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/05-quantile-precision
