@@ -47,23 +47,20 @@ df<-data.frame(p,l=l1,d=DFUN(QFUN(p)))
 
 df1<-mid95(rnorm,qnorm,dnorm,200)
 
-par(mfrow=c(1,2),mai=c(.8,.8,.1,.1))
-
 myplot<-function(df){
 plot(x=df$p,y=df$l,xlab='Pth quantile',ylab='Length',type='b',main='Length of middle 95% of sampling distn')
 plot(x=df$d,y=df$l,xlab='Density',ylab='Length',type='p',main='Length of middle 95% of sampling distn')
 }
 
 myplot(df1)
-#ggplot(df1,aes(p,l))+geom_point()+geom_line()
-#ggplot(df1,aes(d,l))+geom_point()+geom_line()
-
-
 
 ```
 
+
+**Interpretation**
+
 In the first figure, in the two ends of Pth quantile axis, the value of length is relatively large while it is smaller in the middle.
-In the second figure, it shows a declining of length when density is becoming larger.
+In the second figure, it shows a declining of length when density is becoming larger,which means that we can estimate the quantile with more accuracy  in high density .
 
 
 
@@ -77,10 +74,12 @@ In the second figure, it shows a declining of length when density is becoming la
 
 ```{r}
 df2<-mid95(rexp,qexp,dexp,200)
-#ggplot(df2,aes(p,l))+geom_point()+geom_line()
-#ggplot(df2,aes(d,l))+geom_point()+geom_line()
 myplot(df2)
 ```
+**Interpretation**
+
+In the first  graph, we can see that the length of sampling increases when pth quantile increases, which means that we can estimate the lower probability quantile with more precise.
+In the second graph, we can see that the length of sampling decreases when density increases, which means that we can estimate the quantile with more accuracy  in high density .
 
 ## Distribution 3
 **mixture distribution 1**
@@ -109,14 +108,18 @@ p[i]<-uniroot(pfq,c(-2000,20000),p=p[i]) [[1]]
 }
 
 
+df_3
+
 
 df_3<-mid95(rf3,qf3,df3,200)
-#ggplot(df_3,aes(p,l))+geom_point()+geom_line()
-#ggplot(df_3,aes(d,l))+geom_point()+geom_line()
-
 myplot(df_3)
 
 ```
+**Interpretation**
+
+In the first graph, it shows a fluctuation in precision along the pth quantile axis.  In 0.15th and 0.7th quantile, the estimation precision is low while in the 0.4th and 0.9th quantile, the precision is high.
+In the second graph, it shows a roughly declining trend when density increases, which means we can estimate the quantile with more accuracy  in high density .
+
 ## Distribution 4
 **mixture distribution 2**
 
@@ -145,10 +148,13 @@ qf4<-function(p){
 
 df_4<-mid95(rf4,qf4,df4,200)
 myplot(df_4)
-#ggplot(df_4,aes(p,l))+geom_point()+geom_line()
-#ggplot(df_4,aes(d,l))+geom_point()+geom_line()
-
 ```
+
+**Interpretation**
+
+In the first graph, we can see that in middle probability (around 0.5th quantile), the length is large,or the accuracy is low. In the two ends of pth quantile axis, the length is small, which means we could estimate this distribution in very high or very low probability with more precision.
+
+In the second graph,we can see that the length of sampling decreases when density increases, which means that we can estimate the quantile with more accuracy  in high density .
 
 # Which quantile is more reliable ?
 
@@ -186,24 +192,33 @@ summa
 
 # How can we enhance the precision in smulation?
 
-We choose the normal distribution as example  and change the size in one single simulation. We can see that when size becomes larger, the precision improves remarkably, which implies that we could upgrade the size to make sure the accuracy when simulating.
+
 
 ```{r}
 df5<-mid95(rnorm,qnorm,dnorm,400)
 df6<-mid95(rnorm,qnorm,dnorm,800)
 df7<-mid95(rnorm,qnorm,dnorm,1600)
+```
+
+
+```{r}
 lens<-list(df1$l,df5$l,df6$l,df7$l)
 plot.new()
-plot.window(xlim=c(0,1),ylim=range(purrr::flatten(lens)))
+plot.window(xlim=c(0,1.15),ylim=range(purrr::flatten(lens)))
 for(j in 1:4){
   lines(df1$p,lens[[j]],type="b",pch=16,col=j,lwd=3)
   text(x=df1$p[1],y=lens[[j]][1],labels=j*200,pos=2)
 }
 axis(1) # second is the position. the third is the label
 axis(2)
+legend(1, 0.55, 2^(1:4)*100, cex=0.8, col=c(1,2,3,4), pch=21:22, lty=1:2, bg="white", title="size", title.col="black") 
 box()
 title(xlab = parse(text = "P[th]~quantile"), ylab = 'length', line = 2)
 ```
+**Interpretation**
+
+We choose the normal distribution as example  and change the size in one single simulation. We can see that when size becomes larger, the precision improves remarkably, which implies that we could upgrade the size to make sure the accuracy when simulating.
+
 
 
 
