@@ -1,0 +1,259 @@
+---
+title: "Which quantiles of a continuous distribution can one estimate with more precision?"
+author: Can LUO
+date: "`r format(Sys.time(), '%9/%22/%2019')`"
+output: 
+  html_notebook:
+    theme: spacelab
+    #highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
+---
+The median is an important quantity in data analysis. It represents the middle value of the data distribution. Estimates of the median, however, have a degree of uncertainty because 
+
+(a) the estimates are calculated from a **finite sample**
+
+(b) the data distribution of the underlying data is generally unknown.
+
+One important roles of a data scientist is to quantify and to communicate the degree of uncertainty in his or her data analysis. In this blog, I explained the answer to a series of questions related to the variation of the median (and a range of other quantiles) with various  flexible functions.
+
+
+The audience of your blog post is a Senior Data Scientist who you hope to work with in the future. Your goal is to document how you wrote  flexible functions for the distribution of order statistics.
+
+#  Standard normal distribution
+
+## Medians
+
+### Density distribution
+
+Let's begin with the median from a sample of N = 200 from the standard normal distribution. Using the order statistic formula,I wrote an R function that is the density function for the median in this sample, and  generated a plot of the function. Note that the 100th order statistic is approximately the median. 
+```{r}
+
+dorder <- function(x,k=100,n=200){
+  k*
+  choose(n,k)*
+  (pnorm(x))^(k-1)*
+  (1-pnorm(x))^(n-k)*
+  dnorm(x)
+}
+curve(
+    dorder(x)
+  ,-1
+  ,1
+  , xlab = parse(text="X_median")
+  , ylab = "Density"
+  ,main='Density distribution of median in standard normal distribution'
+)
+
+
+
+```
+
+### Probability distribution
+
+Then I wrote an R function that is the probability function for the median in this sample and generated a plot of the function.
+```{r}
+
+
+porder <- function(x,k=100,n=200){
+  pbinom(k-1, n, pnorm(x), lower.tail = FALSE)
+}
+
+curve(
+    porder(x)
+  , -1
+  , 1
+  , xlab = parse(text="X_median")
+  , ylab = "Probability"
+  ,main='Probability distribution of median in standard normal distribution'
+)
+```
+
+### Quantile distribution
+
+I also wrote an R function that is the quantile function for the median in this sample. (function 'uniroot' is the key point for producing 'q' function from 'p' function ) The quantile function and its plot is as below.
+
+```{r}
+qorder <- function(p,k=100,n=200){
+  for (i in seq_along(p)){
+  p[i]<-uniroot(function(q){porder(q,k,n)-p[i]},interval = c(-10,10))[[1]]
+  }
+  p
+}
+
+p<-seq(0.00001,1,0.0001)
+plot(p,qorder(p),type='l' ,main='Quantile distribution of median in standard normal distribution')
+
+```
+
+
+###  ECDF
+
+Then let's simulate the sampling distribution for the median .The plot of the empirical CDF (ECDF)is as below.
+
+
+```{r}
+library(dplyr)
+
+M <- 1000 # studies
+N <- 200 # sample size
+bmis <- array(rnorm(M*N), c(M, N))
+medians <- bmis %>% apply(1, function(x){sort(x)[100]})
+
+bmi_ecdf <- ecdf(medians)  # The output is a function
+plot(bmi_ecdf, do.points = FALSE, col = "red", lwd = 3)
+curve(porder(x), add = TRUE, lwd = 3, col = "blue")
+legend(
+    "topleft"
+  , c("ECDF","CDF")
+  , lwd = 3
+  , col = c("red","blue")
+  , bty = "n"
+)
+
+```
+### Density Histogram 
+
+Using the simulated sampling distribution from the previous question, I create a histogram (on the density scale) with a plot of the density function overlaying it.
+
+```{r}
+library(dplyr)
+
+M <- 5000 # studies
+N <- 200 # sample size
+bmis <- array(rnorm(M*N), c(M, N))
+medians <- bmis %>% apply(1, function(x){sort(x)[100]})
+hist(medians, breaks = 100, freq = FALSE,main='Density distribution of theoretical and sampling medians')
+curve(dorder(x), lwd = 3, add = TRUE, col = "blue")
+legend(x=0.17,y=4.8,c('theoretical','sampling'),cex=0.8,col=c('blue','black'),pch=21:22, lty=1:2, bg="white", title="type", title.col="black")
+```
+
+
+
+### QQplot
+
+Making QQ plot is also a good way to compare the simulated data of the median relative to the known sampling distribution of the median.
+
+```{r}
+
+M <- 200 # studies
+N <- 200 # sample size
+bmis <- array(rnorm(M*N), c(M, N))
+random_sample<- bmis %>% apply(1, function(x){sort(x)[100]})
+q_candidate <- qorder
+
+x <- q_candidate((1:199)/200)
+y <- quantile(random_sample, probs = (1:199)/200)
+plot(x,y, asp = 1,type='p',xlab = "Theoretical quantile", ylab = "Sample quantile",main='Theoretical median quantile vs Sampling median quantile')
+abline(0,1)
+
+```
+As the QQ plot shows, the simulated data agree with the theoretical sampling distribution.
+
+
+## Maximums
+
+My qorder,porder,qorder functions have the default value of k and n.  If we change the value of k or n, we can assign functions to work for any order statistic and not just the median.
+```{r}
+dorder <- function(x,k=100,n=200){
+  k*
+  choose(n,k)*
+  (pnorm(x))^(k-1)*
+  (1-pnorm(x))^(n-k)*
+  dnorm(x)
+}
+
+porder <- function(x,k=100,n=200){
+  pbinom(k-1, n, pnorm(x), lower.tail = FALSE)
+}
+
+qorder <- function(p,k=100,n=200){
+  for (i in seq_along(p)){
+  p[i]<-uniroot(function(q){porder(q,k,n)-p[i]},interval = c(-10,10))[[1]]
+  }
+  p
+}
+
+```
+
+
+Changing the value of n and k, I generate a QQ plot for simulated data from the sampling distribution of the sample max and the theoretical largest order statistic distribution.
+
+
+```{r}
+M <- 200 # studies
+N <- 200 # sample size
+bmis <- array(rnorm(M*N), c(M, N))
+random_sample<- bmis %>% apply(1, function(x){sort(x)[200]})
+q_candidate <- qorder
+x <- q_candidate((1:200)/201,k=200)
+y <- quantile(random_sample, probs = (1:200)/201)
+plot(x,y, asp = 1,type='p',xlab = "Theoretical quantile", ylab = "Sample quantile",main='Theoretical maximum  vs Sampling maximum ')
+abline(0,1)
+```
+
+
+
+# Exponential distribution
+
+
+Based on the recycling principle, we 'recycle' the functions  by adding new parameters 'dist' to them, so that they can be applied to other continuous distributions.
+
+```{r}
+dorder_f <- function(x,k=1,n=200,dist){
+  PFUN<-get(paste0('p',dist))
+  DFUN<-get(paste0('d',dist))
+  k*
+  choose(n,k)*
+  (PFUN(x))^(k-1)*
+  (1-PFUN(x))^(n-k)*
+  DFUN(x)
+}
+
+porder_f <- function(x,k=1,n=200,dist){
+  PFUN<-get(paste0('p',dist))
+  pbinom(k-1, n, PFUN(x), lower.tail = FALSE)
+}
+
+qorder_f <- function(p,k=1,n=200,dist){
+  for (i in seq_along(p)){
+  p[i]<-uniroot(function(q){porder_f(q,k,n,dist)-p[i]},interval = c(-1,1))[[1]]
+  }
+  p
+}
+```
+
+## Minimums
+
+Using the newly modified functions , I plot the probability and density functions for the sample min (N = 200) of exponential distribution.
+```{r}
+curve(
+    dorder_f(x,dist='exp')
+  ,-0.01
+  ,0.1
+  , xlab = parse(text="X_min")
+  , ylab = "Density"
+  ,main='Density distribution of minimum in exponential distribution'
+)
+```
+
+
+```{r}
+curve(
+    porder_f(x,dist='exp')
+  ,-0.01
+  ,0.08
+  , xlab = parse(text="X_min")
+  , ylab = "Density"
+  ,main='Probability distribution of minimum in exponential distribution'
+)
+
+```
+
+
