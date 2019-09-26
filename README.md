@@ -22,3 +22,7 @@ https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree
 week5 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/05-quantile-precision
+
+week6 assignment
+
+https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/06-order-statistics
