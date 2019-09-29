@@ -206,24 +206,25 @@ abline(0,1)
 Based on the recycling principle, we 'recycle' the functions  by adding new parameters 'dist' to them, so that they can be applied to other continuous distributions.
 
 ```{r}
-dorder_f <- function(x,k=1,n=200,dist){
+dorder_f <- function(x,k=1,n=200,dist,...){
   PFUN<-get(paste0('p',dist))
   DFUN<-get(paste0('d',dist))
   k*
   choose(n,k)*
-  (PFUN(x))^(k-1)*
-  (1-PFUN(x))^(n-k)*
-  DFUN(x)
+  (PFUN(x,...))^(k-1)*
+  (1-PFUN(x,...))^(n-k)*
+  DFUN(x,...)
 }
 
-porder_f <- function(x,k=1,n=200,dist){
+
+porder_f <- function(x,k=1,n=200,dist,...){
   PFUN<-get(paste0('p',dist))
-  pbinom(k-1, n, PFUN(x), lower.tail = FALSE)
+  pbinom(k-1, n, PFUN(x,...), lower.tail = FALSE)
 }
 
-qorder_f <- function(p,k=1,n=200,dist){
+qorder_f <- function(p,k=1,n=200,dist,...){
   for (i in seq_along(p)){
-  p[i]<-uniroot(function(q){porder_f(q,k,n,dist)-p[i]},interval = c(-1,1))[[1]]
+  p[i]<-uniroot(function(q){porder_f(q,k,n,dist,...)-p[i]},interval = c(-1,1))[[1]]
   }
   p
 }
@@ -234,9 +235,9 @@ qorder_f <- function(p,k=1,n=200,dist){
 Using the newly modified functions , I plot the probability and density functions for the sample min (N = 200) of exponential distribution.
 ```{r}
 curve(
-    dorder_f(x,dist='exp')
-  ,-0.01
-  ,0.1
+    dorder_f(x,dist='exp',rate=10)
+  ,-0.002
+  ,0.01
   , xlab = parse(text="X_min")
   , ylab = "Density"
   ,main='Density distribution of minimum in exponential distribution'
@@ -246,7 +247,7 @@ curve(
 
 ```{r}
 curve(
-    porder_f(x,dist='exp')
+    porder_f(x,dist='exp',rate=10)
   ,-0.01
   ,0.08
   , xlab = parse(text="X_min")
