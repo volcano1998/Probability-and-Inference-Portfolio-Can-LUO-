@@ -1,0 +1,192 @@
+---
+title: "Coverage probability"
+author: Can LUO
+output: 
+  html_notebook:
+    theme: spacelab
+    #highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
+---
+
+
+# Coverage Probability
+
+**Coverage probability** refers to the probability that a procedure for
+constructing random regions will produce an interval containing, or covering, the
+true value. It is a property of the interval producing procedure, and is
+independent of the particular sample to which such a procedure is applied. We
+can think of this quantity as the chance that the interval constructed by such a
+procedure will contain the parameter of interest.
+
+
+# Pipeline
+
+In this blog, define the coverage probability as the long run proportion of intervals that capture the population parameter of interest(this time is Medians). Conceptualy,  we calculate the coverage probability with the following steps
+
+1.give the distribution type and true parameters  
+
+2.generate a distribution of conditions above  ----------`generate_data`
+
+3.approximate the distribution above with MLE  -----------`est.mle`
+
+4.generate a sample of size N from MLE parameters and construct a confidence interval --------------`construct_ci`
+
+5.determine if the confidence captures the population parameter -----------`capture_median`
+
+
+Repeat steps (2) - (5) many times. Estimate the coverage probability as the proportion of samples for which the confidence interval captured the population parameter.
+
+**pipeline**
+ trueparameters %>% generate_data() %>% est.mle %>%construct_ci() %>% capture_median()
+
+
+
+
+
+
+
+
+# Function Explanation
+
+```{r import packages}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+`generate_data` can generate distribution in specific parameters.
+
+```{r generate_data}
+generate_data <- function(parameters){ 
+  # Hard coded standard normal distribution
+  rnorm(parameters[1],parameters[2],parameters[3]) 
+}
+```
+
+For normal distribution, there are special MLE formulas which can calculate the parameters. They are 
+
+mean=mean(sample)
+standard deviation=((length(data)-1)/length(data)*variance(data))^.5
+
+So I use them to estimate the distribution , which is shown in function `est.mle`.
+
+```{r est.mle}
+est.mle<-function(data){
+  mle.mean<-mean(data)
+  mle.sd<-sqrt((length(data)-1)/length(data)*var(data))
+  return(c(length(data),mle.mean,mle.sd))
+}
+```
+
+when I got the parameters from mle, I use `rnorm`  to generate distribution which is of the mle parameters, then use `median` to get the median value of one distribution. Repeat this process 5000 times, then we get a sampling distribution of the median.
+
+
+`quantile` function was applied to calculate the 2.5% and 97.5% quantile of the sampling medians distribution.  The range(2.5% quantile, 97.5% quantile) is a 95% confidence interval.
+
+
+You can refer to function `construct_ci` to see more details.
+
+
+```{r construct_ci}
+construct_ci <- function(parameters, summary = "median"){
+  # Hard coded number of draws
+  R <- 5000
+  # Set median as default summary measure
+  sm <- get(summary)
+  sampdist <- rep(NA, R)
+  for(i in 1:R){
+    b <-rnorm(parameters[1],parameters[2],parameters[3]) 
+    sampdist[i] <- sm(b)
+  }
+  # Hard coded symmetric density interval
+  quantile(sampdist, c(0.025, 0.975))
+}
+```
+
+
+
+`capture_median` is for determing whether an interval captures the parameter of interest.
+```{r capture_median}
+capture_median <- function(ci){
+  # Hard coded 0 as parameter of interest
+  c(ci,1*(ci[1] < 0 & 0 < ci[2]))
+}
+
+```
+# Simulation 
+
+```{r initialize parameters}
+set.seed(2)
+N <- 201 # parameters
+pop.mean=0
+pop.sd=1
+trueparameters<-c(N,pop.mean,pop.sd)
+```
+
+
+
+```{r parallel tasking}
+library(doParallel)
+cores_2_use <- detectCores() - 1
+cl <- makeCluster(cores_2_use)
+clusterSetRNGStream(cl, 2344)
+registerDoParallel(cl)
+
+captures <- foreach(
+    i = 1:5000
+  , .combine = c
+  , .packages = c('dplyr') # Need to indicate which packages
+) %dopar% {
+  trueparameters %>% generate_data() %>% est.mle %>%construct_ci() %>% capture_median()
+}
+stopCluster(cl)
+```
+
+
+# Result
+
+```{r  report result}
+df<-data.frame(q1=captures[seq(1,length(captures),3)],q2=captures[seq(2,length(captures),3)],cap=captures[seq(3,length(captures),3)])
+
+
+ggplot() + geom_linerange(data=df, mapping=aes(x=seq(1,nrow(df),1), ymin=q1, ymax=q2,col=factor(cap)),size=0.08)+theme_minimal()+labs(title='Coverage Probability of Medians',x='sample',y='Pop.parameter of interest')+scale_color_manual(values = c("red","light blue"),name = "capture", labels = c("false","true"))+geom_hline(yintercept = 0,size=0.1)+theme(panel.grid = element_blank(),plot.title=element_text(hjust = .5))
+  
+```
+
+
+
+
+We can see the coverage probability is as below:
+```{r coverage probability}
+mean(df$cap)
+```
+ The coverage probability is slightly larger than 95%.
+
+
+# operating characteristics
+
+
+We might change the simulation to learn more about the operating characteristics for constructing the 95% confidence interval. Some operating characteristics are listed here.
+
+
+1.change the sample size
+
+    In this blog the sample size is 5000, we can change the smaple size the influence the confidential interval.
+    
+2.change the kernal of mle
+
+     For this example, the kernal of mle is gaussian kernal. We can also employ `gamma` (or other kernals) to MLE approach.
+     
+3.change the approximate approach
+
+     In this blog, I apply MLE approach to get 95% confidence interval. There are other alternative approaches, such as : MM , kernal density approach and bootstrap.
+
+
+
