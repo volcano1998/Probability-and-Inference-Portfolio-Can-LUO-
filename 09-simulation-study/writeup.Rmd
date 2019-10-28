@@ -1,0 +1,145 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r import packages}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+`generate_data` can generate distribution in specific parameters.
+
+```{r generate_data}
+generate_data <- function(parameters){ 
+  #parameters=list(dist_type,size,par1,par2,kernal,summary)
+  # Hard coded standard normal distribution
+  rdist<-get(paste0('r',parameters[1]))
+  dist<-rdist(parameters[[2]],parameters[[3]],parameters[[4]])
+  suma<-get(parameters[[6]])
+  parameter_interest<-suma(dist)
+  kernal<-parameters[[5]]
+  return(list(dist=dist,kernal=kernal,parameter_interest=parameter_interest,suma=suma,true_par1=parameters[[3]],true_par2=parameters[[4]],rfunction=rdist))
+}
+
+```
+
+
+```{r}
+est_mm<-function(parameters){
+  #parameters=list(dist=dist,kernal=kernal,parameter_interest=parameter_interest,suma=suma,true_par1,true_par2,rfunction)
+  dist<-parameters$dist
+  kernal<-parameters$kernal
+  rfunction<-parameters$rfunction
+  suma<-parameters$suma
+  if (kernal=='gamma'){
+    rate=mean(dist)/var(dist)
+    shape=mean(dist)*rate
+    
+    #to make sure that shape>0 and rate >0
+    while (mean(dist)<=0){
+      dist<-rfunction(length(dist),parameters$true_par1,parameters$true_par2)
+      rate=mean(dist)/var(dist)
+      shape=mean(dist)*rate
+    }
+    return(list(kernal=kernal,size=length(dist),par1=shape,par2=rate,parameter_interest=suma(dist),suma=parameters$suma))
+  }
+  if (kernal=='norm'){
+    mean=mean(dist)
+    sd=sd(dist)
+    return(list(kernal=kernal,size=length(dist),par1=mean,par2=sd,parameter_interest=parameters$parameter_interest,suma=parameters$suma))
+  }
+}
+```
+
+```{r construct_ci}
+construct_ci <- function(parameters){
+  #parametrs=list(kernal,size,par1,par2,parameter_interest,suma)
+  rdist<-get(paste0('r',parameters$kernal))
+  # Hard coded number of draws
+  R <- 5000
+  sm <- parameters$suma
+  sampdist <- rep(NA, R)
+  for(i in 1:R){
+    b <-rdist(parameters$size,parameters$par1,parameters$par2) 
+    sampdist[i] <- sm(b)
+  }
+  # Hard coded symmetric density interval
+  list(q1=quantile(sampdist, 0.025),q2=quantile(sampdist, 0.975),parameter_interest=parameters$parameter_interest)
+}
+```
+
+```{r capture_pinterestr}
+capture_pinterest<-function(parameters){
+  #parametrs=list(q1,q2,parameter_interest)
+  cap<-1*((parameters$q1<=parameters$parameter_interest)&(parameters$q2>=parameters$parameter_interest))
+  list(q1=parameters$q1,q2=parameters$q2,capture=cap)
+}
+```
+
+
+
+
+```{r}
+gamma_settings <- expand.grid(dist_type='gamma'
+                    ,size=201
+                    ,shape= 1.4
+                    , rate = 1/3
+                    , kernal=c('gamma','norm')
+                    , summary = c('median','min')
+                    ,stringsAsFactors = F
+)
+norm_settings <- expand.grid(dist_type='norm'
+                    ,size=201
+                    ,mean=0
+                    , sd=1
+                    , kernal=c('gamma','norm')
+                    , summary = c('median','min')
+                    ,stringsAsFactors = F
+)
+
+```
+
+```{r}
+set.seed(35)
+gamma_settings[4,] %>% generate_data() %>% est_mm() %>% construct_ci() %>% capture_pinterest()
+norm_settings[1,] %>% generate_data() %>% est_mm() %>% construct_ci() %>% capture_pinterest()
+```
+
+```{r}
+bootstrap_cap<-function(parameters){
+  dist_type<-parameters$dist_type
+  size<-parameters$size
+  summary<-parameters$summary
+  rfunction<-get(paste0('r',dist_type))
+  R<-5000
+  sm<-get(summary)
+  sampdist <- rep(NA, R)
+  for(i in 1:R){
+    b <-sample(dist_sample,length(dist_sample),replace = T)
+    sampdist[i] <- sm(b)
+  }
+  q1<-quantile(sampdist,0.025)
+  q2<-quantile(sampdist,0.975)
+  cap<-1*(q1<=sm(dist_sample)&q2>=sm(dist_sample))
+  list(q1=q1,q2=q2,capture=cap)
+  cap
+}
+
+
+x<-rep(NA,1000)
+for (i in 1:1000){
+  x[i]<-norm_settings[3,] %>% bootstrap_cap()
+}
+
+mean(x)
+
+sum(dist_sample)
+sum(b)
+b <-sample(dist_sample,length(dist_sample),replace = T)
+```
+
+
+
+
