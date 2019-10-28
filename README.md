@@ -26,3 +26,7 @@ https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree
 week6 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/06-order-statistics
+
+week8 assignment
+
+https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/08-coverage-probability
