@@ -98,7 +98,8 @@ norm_settings <- expand.grid(dist_type='norm'
                     , summary = c('median','min')
                     ,stringsAsFactors = F
 )
-
+gamma_settings
+norm_settings
 ```
 
 ```{r}
@@ -142,4 +143,8 @@ b <-sample(dist_sample,length(dist_sample),replace = T)
 
 
 
+```{r}
+min_r
+min(runif(201))
+```
 
