@@ -1,150 +1,424 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Method Comparison"
+author: Can LUO
+output: 
+  html_notebook:
+    theme: spacelab
+    #highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
 ---
 
-```{r import packages}
+Coverage probability is an important operating characteristic of methods for constructing interval estimates, particularly confidence intervals. 
+
+Idealy, a 95% confidence interval will capture the population parameter of interest in 95% of samples. One can also calculate 80% or 90% confidence intervals. In general, an X% confidence interval should capture the population parameter of interest in X% of samples.
+
+However, not all methods are equally good! Let's perform a 2 × 4 × 2 factorial simulation study to compare the coverage probability of various methods of calculating 90% confidence intervals. 
+
+Three factors in the experiment 
+
+1.True, underlying distribution
++ standard normal  (for better to MM with gamma, I shift standard normal to N(4,1) in the simulation)
++ gamma(shape = 1.4, scale = 3)
+2.Model
++ method of moments with normal
++ method of moments with gamma
++ kernel density estimation
+bootstrap
+3.Parameter of interest
++ sample min (1st order statistic)
++ median
+
+Other settings in the experiment that will not change are:
+
+* Sample size, N = 201
+* Outside the loop estimation
+
+
+# Simulation result
+```{r}
+# library
+
 library(tidyverse)
 library(dplyr)
+library(doParallel)
 library(ggplot2)
-```
 
-`generate_data` can generate distribution in specific parameters.
-
-```{r generate_data}
-generate_data <- function(parameters){ 
-  #parameters=list(dist_type,size,par1,par2,kernal,summary)
-  # Hard coded standard normal distribution
-  rdist<-get(paste0('r',parameters[1]))
-  dist<-rdist(parameters[[2]],parameters[[3]],parameters[[4]])
-  suma<-get(parameters[[6]])
-  parameter_interest<-suma(dist)
-  kernal<-parameters[[5]]
-  return(list(dist=dist,kernal=kernal,parameter_interest=parameter_interest,suma=suma,true_par1=parameters[[3]],true_par2=parameters[[4]],rfunction=rdist))
+#  baisc functions
+##  gennerate data
+generate_data<-function(N,dist,sh=1.4,sc=3){
+  if (dist=="norm"){
+    rnorm(N)+4
+  }else if(dist=='gamma'){
+    rgamma(N,shape=sh,scale=sc)
+  }
 }
 
-```
 
-
-```{r}
-est_mm<-function(parameters){
-  #parameters=list(dist=dist,kernal=kernal,parameter_interest=parameter_interest,suma=suma,true_par1,true_par2,rfunction)
-  dist<-parameters$dist
-  kernal<-parameters$kernal
-  rfunction<-parameters$rfunction
-  suma<-parameters$suma
-  if (kernal=='gamma'){
-    rate=mean(dist)/var(dist)
-    shape=mean(dist)*rate
+##  produce sample distribution
+estimate.ci<-function(data,mod,par.int,R=100,smoo=0.3){
+  N<-length(data)
+  sum.measure<-get(par.int)
+  if (mod=="MMnorm"){ # assume the data is normal
+    mm.mean<-mean(data)
+    mm.sd<-sd(data)
     
-    #to make sure that shape>0 and rate >0
-    while (mean(dist)<=0){
-      dist<-rfunction(length(dist),parameters$true_par1,parameters$true_par2)
-      rate=mean(dist)/var(dist)
-      shape=mean(dist)*rate
+    
+    # construct ci------------
+    sim.data<-array(rnorm(N*R,mm.mean,mm.sd),dim=c(N,R))  #each column is a dist
+    
+  }
+  else  if(mod=="MMgamma"){
+    mm.shape<-mean(data)^2/var(data)
+    mm.scale<-var(data)/mean(data)
+    
+    # construct ci------------
+    sim.data<-array(rgamma(N*R,shape=mm.shape,scale=mm.scale),dim=c(N,R))  #each column is a dist
+    
+    
+  }
+  else if (mod=="KDE"){
+    
+    #goal  get q function:  p-------->q      f(p)=q  d
+    ecdfstar <- function(t, data, smooth=smoo){
+      outer(t, data, function(a,b){ pnorm(a, b, smooth)}) %>% rowMeans
+    }#   F^ function
+    
+    
+    tbl <- data.frame(
+      x = seq(min(data)-sd(data),max(data)+sd(data),by = 0.01)
+    )# a lot of dense quantile
+    
+    
+    tbl$p <- ecdfstar(tbl$x, data) #from quantile acquire the probability
+    
+    tbl <- tbl[!duplicated(tbl$p),]   # delete same probability of different quantiles; because for 1 probability, there can only be 1 quantile.
+    
+    qkde <- function(ps, tbl){
+      rows <- cut(ps, tbl$p, labels = FALSE)
+      tbl[rows, "x"]
     }
-    return(list(kernal=kernal,size=length(dist),par1=shape,par2=rate,parameter_interest=suma(dist),suma=parameters$suma))
+    
+    # construct ci-----------
+    # samp.dist<-rep(NA,R)
+    # for (i in 1:R){
+    #   U<-runif(N*R)  # random  probability from 0 to 1
+    #   samp.dist[i]<-sum.measure(qkde(U,tbl))  #get the vector of random quantiles which are related to the probability
+    # }
+    # return(samp.dist)
+    U<-runif(N*R)  # random  probability from 0 to 1
+    sim.data<-array(qkde(U,tbl),dim=c(N,R))  #get the vector of random quantiles which are related to the probability
+    
+    
   }
-  if (kernal=='norm'){
-    mean=mean(dist)
-    sd=sd(dist)
-    return(list(kernal=kernal,size=length(dist),par1=mean,par2=sd,parameter_interest=parameters$parameter_interest,suma=parameters$suma))
+  else if(mod=="Boot"){
+    sim.data<-array(sample(data,N*R,replace = T),dim=c(N,R))
+    
   }
+  samp.dist<-apply(sim.data,2,sum.measure)
+  return(samp.dist)
+}
+
+
+## construct confidence interval
+construct_ci<-function(samp.dist){
+  return(quantile(samp.dist,c(.05,.95),na.rm=T))
+}
+
+
+##  determine whether CI captures the interested parameter
+capture_par<-function(ci,true.par){
+  1*(ci[1]<true.par&true.par<ci[2])
 }
 ```
-
-```{r construct_ci}
-construct_ci <- function(parameters){
-  #parametrs=list(kernal,size,par1,par2,parameter_interest,suma)
-  rdist<-get(paste0('r',parameters$kernal))
-  # Hard coded number of draws
-  R <- 5000
-  sm <- parameters$suma
-  sampdist <- rep(NA, R)
-  for(i in 1:R){
-    b <-rdist(parameters$size,parameters$par1,parameters$par2) 
-    sampdist[i] <- sm(b)
-  }
-  # Hard coded symmetric density interval
-  list(q1=quantile(sampdist, 0.025),q2=quantile(sampdist, 0.975),parameter_interest=parameters$parameter_interest)
-}
-```
-
-```{r capture_pinterestr}
-capture_pinterest<-function(parameters){
-  #parametrs=list(q1,q2,parameter_interest)
-  cap<-1*((parameters$q1<=parameters$parameter_interest)&(parameters$q2>=parameters$parameter_interest))
-  list(q1=parameters$q1,q2=parameters$q2,capture=cap)
-}
-```
-
-
 
 
 ```{r}
-gamma_settings <- expand.grid(dist_type='gamma'
-                    ,size=201
-                    ,shape= 1.4
-                    , rate = 1/3
-                    , kernal=c('gamma','norm')
-                    , summary = c('median','min')
-                    ,stringsAsFactors = F
-)
-norm_settings <- expand.grid(dist_type='norm'
-                    ,size=201
-                    ,mean=0
-                    , sd=1
-                    , kernal=c('gamma','norm')
-                    , summary = c('median','min')
-                    ,stringsAsFactors = F
-)
-gamma_settings
-norm_settings
+N<-201
+true.norm.med<-qnorm(.5)+4
+true.norm.min<-mean(apply(array(rnorm(N*10000),dim=c(N,10000)),2,min))+4
+true.gamma.med<-qgamma(.5,shape=1.4,scale=3)
+true.gamma.min<-mean(apply(array(rgamma(N*10000,shape=1.4,scale=3),dim=c(N,10000)),2,min))
+
+
+settings<-expand.grid(dist=c("norm","gamma"),model=c('MMnorm','MMgamma','KDE','Boot'),par.int=c('min','median'),stringsAsFactors = F)
+settings<-settings %>% 
+  mutate(true.par=case_when(
+    dist=='norm'&par.int=='min'~true.norm.min,
+    dist=='norm'&par.int=='median'~true.norm.med,
+    dist=='gamma'&par.int=='min'~true.gamma.min,
+    dist=='gamma'&par.int=='median'~true.gamma.med
+  )) %>% 
+  mutate(id=row_number()) %>% 
+  select(id,everything())
 ```
 
-```{r}
-set.seed(35)
-gamma_settings[4,] %>% generate_data() %>% est_mm() %>% construct_ci() %>% capture_pinterest()
-norm_settings[1,] %>% generate_data() %>% est_mm() %>% construct_ci() %>% capture_pinterest()
-```
 
 ```{r}
-bootstrap_cap<-function(parameters){
-  dist_type<-parameters$dist_type
-  size<-parameters$size
-  summary<-parameters$summary
-  rfunction<-get(paste0('r',dist_type))
-  R<-5000
-  sm<-get(summary)
-  sampdist <- rep(NA, R)
-  for(i in 1:R){
-    b <-sample(dist_sample,length(dist_sample),replace = T)
-    sampdist[i] <- sm(b)
+cores_2_use <- detectCores() - 1
+print('cores_2_use: ',cores_2_use)
+cl <- makeCluster(cores_2_use)
+clusterSetRNGStream(cl, 2344)a
+registerDoParallel(cl)
+
+
+for (j in 1:nrow(settings)){
+  print('the index:',j)
+  captures <- foreach(
+    i = 1:20
+    , .combine = c
+    , .packages = c('dplyr') # Need to indicate which packages
+  ) %dopar% {
+    generate_data(N,settings$dist[j]) %>% estimate.ci(mod=settings$model[j],par.int=settings$par.int[j],R=5000 )%>%construct_ci() %>% capture_par(settings$true.par[j])
   }
-  q1<-quantile(sampdist,0.025)
-  q2<-quantile(sampdist,0.975)
-  cap<-1*(q1<=sm(dist_sample)&q2>=sm(dist_sample))
-  list(q1=q1,q2=q2,capture=cap)
-  cap
+  settings$cap[j]<-mean(captures)
 }
 
 
-x<-rep(NA,1000)
-for (i in 1:1000){
-  x[i]<-norm_settings[3,] %>% bootstrap_cap()
-}
-
-mean(x)
-
-sum(dist_sample)
-sum(b)
-b <-sample(dist_sample,length(dist_sample),replace = T)
+stopCluster(cl)
 ```
 
 
 
 ```{r}
-min_r
-min(runif(201))
+settings
 ```
+
+
+```{r}
+ggplot(settings, aes(y=dist, x=model)) + 
+  geom_tile(aes(fill = cap))+
+  geom_text(aes(label=cap))+
+  scale_fill_gradient(high = "seagreen",low='gray')+
+  facet_wrap(~par.int)+
+  theme_linedraw()+
+  labs(title='Evaluation of Different Estimation Approach')
+```
+
+
+# Evaluation 
+
+## method of moment
+
+This approach can be very accurate and has high likelihood to capture the interested , if the fitting model is appropriate.
+
+One telling example is when we estimate normal distribution with normal model as well as estimate gamma distribution with gamma model, the probability that the 95% CI captures the interested parameter is pretty high (higher than 0.94).
+
+Nevertheless,when we choose inappropriate fitting model, the accuracy of estimation can not be garenteed. 
+
+
+When we use MMnorm model to estimate sample minimum gamma of distribution, the coverage probability is an awkward 0, because gamma distribution relies on positive value while normal distribution produces negative values . 
+
+When we apply MMgamma model to capture the median of normal distribution , it has high coverage probability, because in this case the estimated distribution is N(4,1), the median value is greater than 0, if the median value is less than 0, the MMgamma model will fail.
+
+```{r}
+mm<-settings %>% 
+  filter(model=='MMnorm'|model=='MMgamma')
+ggplot(mm, aes(y=dist, x=model)) + 
+  geom_tile(aes(fill = cap))+
+  geom_text(aes(label=cap))+
+  scale_fill_gradient(high = "seagreen",low='gray')+
+  facet_wrap(~par.int)+
+  theme_linedraw()+
+  labs(title='Evaluation of Method of Moment Approach')
+```
+
+
+>thoughts:
+An appropriate model is critical to MM approach .  If the model is wrongly chosen, the outcome is like  a gambling.
+
+
+
+##  KDE
+
+
+kernal density estimation works well for sample median of normal and gamma distribution as well as minimum of normal distribution. However, it doesn't work well for minimum of gamma distribution.
+
+```{r}
+kde<-settings %>% 
+  filter(model=='KDE')
+ggplot(kde, aes(y=dist, x=model)) + 
+  geom_tile(aes(fill = cap))+
+  geom_text(aes(label=cap))+
+  scale_fill_gradient(high = "seagreen",low='gray')+
+  facet_wrap(~par.int)+
+  theme_linedraw()+
+  labs(title='Evaluation of Kernal Density Estimation')
+```
+
+
+Coverage probability for sample minimum of gamma distribution is pretty low! Why is that?
+
+Before diving in, let's draw a zipper plot first.
+
+
+```{r}
+one_cap<-function(x){
+data<-rgamma(n=201,shape=1.4,scale=3)
+N<-length(data)
+R<-5000
+qq<-quantile(apply(array(rkde(N*R,dat=data),dim=c(N,R)),2,min),c(0.025,0.975))
+cap<-data.frame(q1=qq[[1]],q2=qq[[2]])
+cap %>% 
+  mutate(capture=case_when(
+    q1<=true.gamma.min&q2>=true.gamma.min~1,
+    T~0
+  ))
+}
+
+
+df<-1:100 %>% 
+  split(seq(1,100)) %>% 
+  map(one_cap) %>% 
+  do.call(rbind,.)
+
+ggplot() +
+  geom_linerange(data=df, mapping=aes(x=seq(1,nrow(df),1), ymin=q1, ymax=q2,col=factor(capture)),size=0.2)+
+  theme_minimal()+
+  geom_hline(yintercept = true.gamma.min,size=0.3,col='black')+
+  labs(title='Coverage Probability of Minimums from kde',x='sample',y='Pop.parameter of interest')+
+  scale_color_manual(values = c("red","skyblue"),name = "capture", labels = c("false","true"))
+```
+
+In the zipper plot, we can see that most of the red lines, which mean failure to capture the minimum, are below the true parameter. Why is that?
+
+
+Let's dive into the function of kernal density estimation.
+ 
+The basic to make KDE is to choose a kernal to 'smoothen' the density curve.
+
+
+```{r}
+
+# kernal density function
+
+gen_tbl<-function(data,smoo,kernal){
+    ecdfstar <- function(t, data, smooth=smoo){
+      outer(t, data, function(a,b){ kernal(a, b, smooth)}) %>% rowMeans
+    }#   f^ function  or F^ function
+    
+    
+    tbl <- data.frame(
+      x = seq(min(data)-sd(data),max(data)+sd(data),by = 0.01)
+    )# a lot of dense quantile
+    
+    
+    tbl$d <- ecdfstar(tbl$x, data) #from quantile acquire the probability
+    
+    tbl <- tbl[!duplicated(tbl$d),]   # delete same probability of different quantiles; because for 1 probability, there can only be 1 quantile.
+}
+
+
+dkde<-function(ps,data=dat){
+  tbl<-gen_tbl(data,.3,dnorm)
+      rows <- cut(ps, tbl$x, labels = FALSE)
+      tbl[rows, "d"]
+}
+
+
+dat<-rgamma(200,shape=1.4,scale=3)
+curve(dkde(x,data=dat),col='red',from=-2,to=2,ylab='density of probability')
+curve(dgamma(x,shape=1.4,scale=3),add=T)
+legend(-2, 0.17, legend=c( "true dist","kde"),
+       col=c( "black","red"), lty=1:2, cex=0.8)
+title(main=' Comparing Density of True Gamma and KDE')
+```
+
+We can see that when x<0, density of true gamma  is 0 while the density of KDE distribution is greater than 0, because we've applied gaussian kernal to modify the distribution. When we do simulation from KDE, the minimum can propbaly be less than 0, that's why we can not always capture the true minimum .
+
+>thoughts: kernal density estimation is a good way to smoothen the density curve, and the trade-off is that it lost some important detail, like an exaggerated filter.  How to choose a appropriate 'kernal', is a worthy question.
+
+# bootstrap
+
+```{r}
+bts<-settings %>% 
+  filter(model=='Boot')
+ggplot(bts, aes(y=dist, x=model)) + 
+  geom_tile(aes(fill = cap))+
+  geom_text(aes(label=cap))+
+  scale_fill_gradient(high = "seagreen",low='gray')+
+  facet_wrap(~par.int)+
+  theme_linedraw()+
+  labs(title='Evaluation of Bootstrap')
+```
+We found that the coverage probability for median is great, but for minimum is so low. Why is that?
+
+
+
+```{r}
+one_cap_bt<-function(x){
+data<-rgamma(n=201,shape=1.4,scale=3)
+N<-length(data)
+R<-5000
+qq<-quantile(apply(array(sample(x=data,size=N*R,replace=T),dim=c(N,R)),2,min),c(0.025,0.975))
+cap<-data.frame(q1=qq[[1]],q2=qq[[2]])
+cap %>% 
+  mutate(capture=case_when(
+    q1<=true.gamma.min&q2>=true.gamma.min~1,
+    T~0
+  ))
+}
+
+
+df_bt<-1:100 %>% 
+  split(seq(1,100)) %>% 
+  map(one_cap_bt) %>% 
+  do.call(rbind,.)
+
+ggplot() +
+  geom_linerange(data=df_bt, mapping=aes(x=seq(1,nrow(df),1), ymin=q1, ymax=q2,col=factor(capture)),size=0.2)+
+  theme_minimal()+
+  geom_hline(yintercept = true.gamma.min,size=0.3,col='black')+
+  labs(title='Coverage Probability of Minimums from bootstrap',x='sample',y='Pop.parameter of interest')+
+  scale_color_manual(values = c("red","skyblue"),name = "capture", labels = c("false","true"))
+```
+
+
+
+
+
+There are two main hurdles for bootstrap the capture the minimum:
+
+1.  If the initial plug-in data excludes the true minimum, the coverage probability will be 0.
+
+2.  Even if the initial plug-in data includes the true minimum, after bootstrap the simulative distrobution might exclude the true minimum.
+
+for the second hurdle, let's assume that the number of values which are less than or equal to the true min in the plug-in data is x,
+
+then 
+
+in one bootstrap, the likelihood that newly generated data excludes that rare x values is 
+
+(1-x/201)^201
+
+```{r}
+x<-1
+(1-x/201)^201
+```
+
+
+if x=1, the probability that one bootstrap sample can not capture the minimum is 0.367.
+
+
+
+# conclusion
+
+>
+1.  MM is a good approach to estimate unknown distribution,when we have the confidence about the fitting model.
+
+>2.  KDE can smoothen the density curve, but it is not perfectly "faithful' to  true distribution.
+
+>3. Bootstrap is an easy way to estimate, though it produces poor results when estimating the extreme value (maximum or minimum).
+
+
+
+
+
+
 
