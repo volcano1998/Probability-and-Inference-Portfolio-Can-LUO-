@@ -30,3 +30,11 @@ https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree
 week8 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/08-coverage-probability
+
+week9 assignment
+
+https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/09-simulation-study
+
+week10 assignment
+
+https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/10-CLT-approximation
