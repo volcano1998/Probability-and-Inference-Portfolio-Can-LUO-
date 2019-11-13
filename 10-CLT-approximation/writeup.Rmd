@@ -43,6 +43,7 @@ library(magrittr)
 library(sn)
 library(ggplot2)
 library(dplyr)
+library(tidyverse)
 
 generate_data<-function(para,R=5000,location=0,scale=1){
   N<-para$N
@@ -68,7 +69,7 @@ settings
 ```
 
 
-We can see how the skewed normal distribution looks like as below according to the input settings.
+We can see how the skewed normal distribution looks like as below according to different slant of the input settings.
 ```{r skewed distribution}
 gen_dist<-function(para){
   N<-para$N
@@ -77,14 +78,17 @@ gen_dist<-function(para){
 }
 
 set.seed(1011)
-dist_out<-settings %>% 
-  split(seq(1,16)) %>% 
+
+settings_1<-expand.grid(N=1000000,slant=c(0,2,10,100))
+dist_out<-settings_1 %>% 
+  split(seq(1,4)) %>% 
   map(gen_dist) %>% 
   do.call(rbind,.)
 
 
 
-ggplot(dist_out,aes(x=dist))+ geom_line(stat="density")+theme_linedraw()+facet_grid(rows=vars(slant_f),cols=vars(N_f))+labs(title='Skewed Normal Distributions')
+graph1<-ggplot(dist_out,aes(x=dist))+ geom_line(stat="density")+theme_linedraw()+facet_grid(rows=vars(slant_f),cols=vars(N_f))+labs(title='Dist')
+graph1
 ```
 When the slant becomes larger, the distribution looks more skew.
 
@@ -101,20 +105,30 @@ output
 
 
 ```{r  compare clt and simulation}
-ggplot(output,aes(x = sample_dist_clt,
+graph2<-ggplot(output,aes(x = sample_dist_clt,
            y = sample_dist_sim)) +
   geom_point(alpha = 0.8,
-             size = 0.4) +geom_abline(slope = 1,size=.1)+
+             size = 0.4) +geom_abline(slope = 1,size=.1,col='purple')+
   theme_linedraw() +
   labs(title = "QQ plot"
       ) +
 facet_grid(rows=vars(slant_f),cols=vars(N_f)) 
 ```
+```{r}
+library("cowplot")
+ggdraw() +
+  draw_plot(graph1, x = 0, y = 0, width = .2, height = 1) +
+  draw_plot(graph2, x = .2, y = 0, width = .7, height = 1)
+```
+
+
 For the figures,we can see that outcome of CLT estimation comply with outcome of simulation approach when estimating a skew normal distribution. 
 
 Only when in the maximum and minimun end, there is slight deviation between them. 
 
 When the sample size N becomes larger, CLT estimation fits better with simulation outcome.
+
+When the slant becomes greater, CLT estimation is less accurate than when  slant is smaller.
 
 
 # Conclusion
