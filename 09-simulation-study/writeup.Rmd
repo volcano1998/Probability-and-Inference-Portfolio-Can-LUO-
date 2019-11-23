@@ -403,7 +403,9 @@ x<-1
 ```
 
 
-if x=1, the probability that one bootstrap sample can not capture the minimum is 0.367.
+if x=1, the probability that one bootstrap sample can not capture the minimum is 0.367, which is very high and causes capture failure.
+
+thoughts: the initial data sample has main influence on bootstrap approach.
 
 
 
@@ -414,7 +416,7 @@ if x=1, the probability that one bootstrap sample can not capture the minimum is
 
 >2.  KDE can smoothen the density curve, but it is not perfectly "faithful' to  true distribution.
 
->3. Bootstrap is an easy way to estimate, though it produces poor results when estimating the extreme value (maximum or minimum).
+>3. Bootstrap relies much on the initial plug-in sample, which renders poor results when estimating the extreme value (maximum or minimum).
 
 
 
