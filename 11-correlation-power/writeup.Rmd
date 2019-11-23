@@ -1,0 +1,206 @@
+---
+title: "Power and sample size calculations correlational studies"
+author: Can LUO
+output: 
+  html_notebook:
+    theme: spacelab
+    #highlight: zenburn
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    fig_width: 70
+    fig_height: 6
+    fig_caption: true
+---
+# Simulation
+
+A common research objective is to demonstrate that two measurements are highly correlated. One measurement, call it A, may reflect the severity of disease but is difficult or costly to collect. Another measurement, call it B, may be easier to collect and potentially related to measurement A. If there is strong association between A and B, a cost effective strategy for diagnosis may be to collect measurement B instead of A.
+
+
+However, this indirect approach is reliable only when variable  A has strong correlation with variable B, which requirs a lot research to demonstrate. Before researching collecting data, we usually need do pilot project figuring out what the appropriate sample size is and what's the relationship between underlying correlation and our estimation.
+
+For example, if one indirect measure makes sense safely only when the correlation between A and B is greater than 0.8 . We can do simulation as below to pre-test the correlation beyween A and B:
+
+Let the sample size be 25, 50, 75, and 100. Let the population correlation range from 0.8 to 0.95.
+Power is the probability that the study will end in success when the true underlying correlation is, in fact, greater that 0.8. I will estimate power for different combinations of sample size and the true population correlation.
+
+
+The result is as below.
+
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+
+one_calc<-function(N,rho,null_correlation = 0.8,R = 5000,conf.level=0.95){
+  library(mvtnorm)
+  set.seed(20394)
+  sigma <- array(c(1,rho,rho,1), c(2,2))
+  mu <- c(0,0)
+  
+  detect <- rep(NA, R)
+  for(i in 1:R){
+    data <- rmvnorm(N, mean = mu, sigma = sigma)
+    results <- cor.test(x = data[,1], y = data[,2], alternative = "greater",conf.level = conf.level)
+    detect[i] <- results$conf.int[1] > null_correlation
+  }
+  power <- mean(detect)
+}
+
+settings<-expand.grid(rho=seq(0.8,0.95,0.01),N=c(25,50,75,100))
+output<-settings
+for ( i in 1:nrow(settings)){
+  output$power[i]<-one_calc(N=settings$N[i],rho=settings$rho[i])
+}
+
+ggplot(output,aes(x=rho,y=power,group=N,col=factor(N)))+
+  geom_line()+
+  theme_light()+
+  scale_x_continuous(limits = c(0.78,0.96))+
+  scale_y_continuous(limits = c(0,1))+
+  coord_equal(ratio = 0.2)+
+  theme(panel.grid= element_blank(),legend.box.background = element_rect(colour = "gray"))+
+  geom_text(aes(label=ifelse(rho==0.88,paste0('N = ',as.character(N)),'')),hjust=0.6,vjust=0,col='black')+
+  labs(col='N')+
+  xlab('true correlation')+
+  geom_hline(yintercept = c(1,0.05),size=0.1,linetype='dashed')+
+  geom_text(x=0.8,y=0.98,label='power = 1.00',col='gray',family = "Times New Roman")+
+  geom_text(x=0.8,y=0.03,label='power = 0.05',col='gray',family = "Times New Roman")+
+  labs(caption = 'conf.level = 0.95')
+  
+```
+# Explanation
+
+The simulation selects true underlying correlation from 0.8 to 0.95, sample size equal to 25,50,75,100 as the sample settings, so we can see
+
+##  When  the true correlation is greater than 0.8 , for the same underlying correlation,the larger the sample size becomes, the greater the power is.
+
+thoughts:
+
+the basis of my simulation is central limit  theorom, which gives the left confidence interval of sample mean given variation (v), sample size(N) , confidence level( ${\alpha}$) and  mean value of the data (m).
+
+<font size='8'> left_ci = $Z_{\alpha}$  $\frac{\sqrt{v}}{\sqrt{N}}$ + m </font>
+
+
+$Z_{\alpha}$=qnorm(0.05)=-1.644854 < 0\n
+
+v is hard coded\n
+
+m is calculated from data (close to true correlation)\n
+
+so when $\frac{1}{\sqrt{N}}$ goes up, the left confidence interval goes down, ie. the larger the sample size becomes, the greater the power is.
+
+
+
+
+```{r}
+calc_N<-function(N,rho=0.9){
+  conf.level<-0.95
+sigma <- array(c(1,rho,rho,1), c(2,2))
+mu <- c(0,0)
+out_1<-rep(NA,1000)
+for (i in 1:length(out_1)){
+  data <- rmvnorm(N, mean = mu, sigma = sigma)
+results <- cor.test(x = data[,1], y = data[,2], alternative = "greater",conf.level = conf.level)
+out_1[i]<-results$conf.int[1]
+}
+mean(out_1)
+}
+
+ci_left<-sapply(seq(20,100,10), FUN=calc_N)
+change_N<-data.frame(N=seq(20,100,10),ci_left=ci_left)
+ggplot(change_N,aes(1/sqrt(N),ci_left))+geom_line()+geom_point()+
+  geom_hline(yintercept =0.8,col='red',linetype='dashed')+
+  geom_text(x=0.12,y=0.796,label='Ho: correlation < 0.8',col='red')+
+  theme_light()+
+  theme(panel.grid = element_blank())+
+ labs(caption = "Settings : true correlation = 0.9   conf.level = 0.95")
+
+```
+
+
+##  When  the true correlation is greater than 0.8 , for the same sample size,the larger the correlation is, the greater the power is.
+
+
+This can also be explained by CLT.
+
+when true correlation shifts towards 1, m shifts responsively, so left_ci goes up.
+
+```{r}
+calc_rho<-function(rho,N=50){
+  conf.level<-0.95
+sigma <- array(c(1,rho,rho,1), c(2,2))
+mu <- c(0,0)
+out_1<-rep(NA,1000)
+for (i in 1:length(out_1)){
+  data <- rmvnorm(N, mean = mu, sigma = sigma)
+results <- cor.test(x = data[,1], y = data[,2], alternative = "greater",conf.level = conf.level)
+out_1[i]<-results$conf.int[1]
+}
+mean(out_1)
+}
+rhos<-seq(0.82,0.94,0.02)
+ci_left_1<-sapply(rhos, calc_rho)
+change_rho<-data.frame(rho=rhos,ci_left=ci_left_1)
+ggplot(change_rho,aes(rho,ci_left))+geom_line()+geom_point()+
+geom_hline(yintercept =0.8,col='red',linetype='dashed')+
+  geom_text(x=0.83,y=0.79,label='Ho: correlation < 0.8',col='red')+
+  theme_light()+
+  theme(panel.grid = element_blank())+
+   labs(x='true correlation',caption = "Settings : sample size = 50  conf.level = 0.95")
+```
+
+##  When  the true correlation is equal to 0.8 , for different sample size, the power is the same.
+
+central limit theorom is an estimation of the true mean value, which means it can only give the likelihood of which true mean value can be  different number.
+In my simulation, I chose confidence interval of 95% and the mothod is "greater", which means the true mean might be in the confidence interval with 95% likelihood, or not in the confidence interval with 5% likelihood, theoretically.
+
+ One thing you might notice is that for every single simulation , the confidence intervals are slightly different, this is because of the noise from  data choosing . The noise can produce positive or negative effect to  coverage probability, which means for every simulation the likelihood of capturing the true mean mignt be less or more than 95%, but for 5000 simulation , the overall coverage probability should converge to the hard coded 95%.
+ 
+ So the power is equal to probability of type II error: the true mean is in the smaller 5% part of sampling distribution. 
+ 
+##  What will happen if we change the threshold of confidence interval?
+
+
+```{r}
+# settings_1<-expand.grid(rho=c(0.9,0.85),N=50,conf.level=c(0.3,0.5,0.7,0.95))
+settings_1<-expand.grid(rho=seq(0.8,0.95,0.02),N=50,conf.level=c(0.3,0.5,0.7,0.95))
+output_1<-settings_1
+for ( i in 1:nrow(settings_1)){
+  output_1$power[i]<-one_calc(N=settings_1$N[i],rho=settings_1$rho[i],conf.level =settings_1$conf.level[i])
+}
+
+ggplot(output_1,aes(x=rho,y=power,group=conf.level,col=factor(conf.level)))+
+  geom_line()+
+  theme_light()+
+  # scale_x_continuous(limits = c(0.78,0.96))+
+  # scale_y_continuous(limits = c(0,1))+
+   coord_equal(ratio = 0.2)+
+  theme(panel.grid= element_blank(),legend.box.background = element_rect(colour = "black"))+
+  geom_text(aes(label=ifelse(rho==0.8,paste0('conf.level = ',as.character(conf.level)),'')),hjust=0,vjust=1,col='black')+
+  labs(col='conf.level ')+
+  xlab('true correlation')+
+  labs(caption = "Settings : sample size = 50 ")
+  # geom_hline(yintercept = c(1,0.05),size=0.1,linetype='dashed')+
+  # geom_text(x=0.8,y=0.98,label='power = 1.00',col='gray',family = "Times New Roman")+
+  # geom_text(x=0.8,y=0.03,label='power = 0.05',col='gray',family = "Times New Roman")
+  
+
+```
+
+
+We can see that for the same true correlation, the higher the confidence level is , the less the power is. This is because conf.level(${\alpha}$) change the value of $Z_{\alpha}$.
+
+# Conclusion
+
+When true correlation and confidence level is constant , larger sample size makes power higher, so we should collect as much data as posisbel to  meet the demand of confidence level we want to achieve.
+
+
+
+
+
+
+
