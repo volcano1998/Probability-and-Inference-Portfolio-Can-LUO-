@@ -1,40 +1,44 @@
 # Probability-and-Inference-Portfolio-Can-LUO-
 
-week1 assignment
+01 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/01-roulette-simulation
 
 
-week2 assignment
+02 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/02-monte-carlo-error
 
 
-week3 assignment
+03 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/03-probability-calculation
 
 
-week4 assignment
+04 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/04-home-field-advantage
 
-week5 assignment
+05 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/05-quantile-precision
 
-week6 assignment
+06 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/06-order-statistics
 
-week8 assignment
+08 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/08-coverage-probability
 
-week9 assignment
+09 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/09-simulation-study
 
-week10 assignment
+10 assignment
 
 https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/10-CLT-approximation
+
+11 assignment
+
+https://github.com/volcano1998/Probability-and-Inference-Portfolio-Can-LUO-/tree/master/11-correlation-power
