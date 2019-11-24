@@ -82,7 +82,7 @@ thoughts:
 
 the basis of my simulation is central limit  theorom, which gives the left confidence interval of sample mean given variation (v), sample size(N) , confidence level( ${\alpha}$) and  mean value of the data (m).
 
-<font size='8'> left_ci = $Z_{\alpha}$  $\frac{\sqrt{v}}{\sqrt{N}}$ + m </font>
+<font size='4'> left_ci = $Z_{\alpha}$  $\frac{\sqrt{v}}{\sqrt{N}}$ + m </font>
 
 
 $Z_{\alpha}$=qnorm(0.05)=-1.644854 < 0\n
