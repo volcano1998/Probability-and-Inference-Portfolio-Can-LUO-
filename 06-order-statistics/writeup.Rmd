@@ -24,7 +24,6 @@ The median is an important quantity in data analysis. It represents the middle v
 One important roles of a data scientist is to quantify and to communicate the degree of uncertainty in his or her data analysis. In this blog, I explained the answer to a series of questions related to the variation of the median (and a range of other quantiles) with various  flexible functions.
 
 
-The audience of your blog post is a Senior Data Scientist who you hope to work with in the future. Your goal is to document how you wrote  flexible functions for the distribution of order statistics.
 
 #  Standard normal distribution
 
@@ -57,11 +56,14 @@ curve(
 
 ```
 
+
+This is the theoretical plot of likelihood density of medians. Most of the density is located in range of (-0.3,0.3),and the highest point is laocated in x=0, which means for most situation, the variables should have median value between -0.3 to 0.3, very rarely it will be out of the range.
+
+
 ### Probability distribution
 
-Then I wrote an R function that is the probability function for the median in this sample and generated a plot of the function.
-```{r}
 
+```{r}
 
 porder <- function(x,k=100,n=200){
   pbinom(k-1, n, pnorm(x), lower.tail = FALSE)
@@ -75,12 +77,28 @@ curve(
   , ylab = "Probability"
   ,main='Probability distribution of median in standard normal distribution'
 )
+
+porder
 ```
+Explanation of P and d function:
+
+
+event A: In data of size n, the kth quantile is less than or equal to x0
+
+event B: In data of size n, there have to be at least k variables less than or equal to x0.  (the number of variables less than x0 > k-1)
+
+event A and B are equivalent.
+
+so we can calculate F(x) like this:
+
+F(x)=P(event A)=P(event B)=pbinorm(k-1, n, pnorm(x), lower.tail = FALSE)  #when lower.tail=False, return P[X > x]
+
+then density function f(x) is the derivative of F(x).
+
 
 ### Quantile distribution
 
-I also wrote an R function that is the quantile function for the median in this sample. (function 'uniroot' is the key point for producing 'q' function from 'p' function ) The quantile function and its plot is as below.
-
+The quantile function for the median in this sample is in the code below. (function 'uniroot' is the key point for producing 'q' function from 'p' function ) 
 ```{r}
 qorder <- function(p,k=100,n=200){
   for (i in seq_along(p)){
@@ -120,6 +138,9 @@ legend(
 )
 
 ```
+The curve of ECDF complies with curve of CDF, validating the approach of gennerating medians.
+
+
 ### Density Histogram 
 
 Using the simulated sampling distribution from the previous question, I create a histogram (on the density scale) with a plot of the density function overlaying it.
@@ -136,11 +157,11 @@ curve(dorder(x), lwd = 3, add = TRUE, col = "blue")
 legend(x=0.17,y=4.8,c('theoretical','sampling'),cex=0.8,col=c('blue','black'),pch=21:22, lty=1:2, bg="white", title="type", title.col="black")
 ```
 
-
+We can see the sampling distribution is rougher than theoretical one, but in overall view they fit well.
 
 ### QQplot
-
-Making QQ plot is also a good way to compare the simulated data of the median relative to the known sampling distribution of the median.
+QQ plot is qunatile-quantile plot. For two series of variables, extract quantiles of equal probability values, and let them as x and y value to draw points. If two series of variables have same underlying distribution, the points should lie tightly close to the line of y=x.
+This plot can be applied to test the sampling accuracy by comparing with theretical quantiles.
 
 ```{r}
 
@@ -155,10 +176,9 @@ y <- quantile(random_sample, probs = (1:999)/1000)
 
 plot(x,y, asp = 1,type='p',xlab = "Theoretical quantile", ylab = "Sample quantile",main='Theoretical median quantile vs Sampling median quantile')
 abline(0,1)
-
 ```
-As the QQ plot shows, the simulated data agree with the theoretical sampling distribution.
 
+From graph above, we can see theoretical quantiles has good linear relationship with sample quantile and the slope is equal to 1 intuitively, which means the sampling distribution of medians is faithful to underlying distribution.
 
 ## Maximums
 
@@ -203,6 +223,24 @@ plot(x,y, asp = 1,type='p',xlab = "Theoretical quantile", ylab = "Sample quantil
 abline(0,1)
 ```
 
+From graph above,we can tell sampling distribution of maximum fits well with theoretical distribution.
+
+Thoughts:
+Most of medians expand from -0.3 to 0.3, while most of maximums are in range of (1.8,4.8). So the sampling distribution of medians is tighter than that of maximums for normal distribution, we can estimate the median of normal distribution more precisely.This is because of property of normal distribution
+
+The middle part of distribution of standard norm is sharp while the end part is flattern.
+```{r}
+curve(dnorm(x)
+      ,-5
+      ,5)
+abline(v=c(0,0.3),col='red',lty=2)
+abline(v=c(3,4.3),col='blue',lty=2)
+```
+```{r}
+diff(dnorm(c(4.3,3)))
+diff(dnorm(c(0.3,0)))
+```
+The  likelihood difference between x=0 and x=0.3 is 0.01755, that between x=3 and x=4.3 is 0.0043933. So in the end part, from x=3 to x=4.3, they have nearly the same likelihood to be the maximum, so the sampling distribution of maximum shoulbe be wider. But for median, the likelihood difference are bigger, so the value around the true median are less likely to appear, so the sampling distribution are sharper.
 
 
 # Exponential distribution
@@ -242,7 +280,7 @@ Using the newly modified functions , I plot the probability and density function
 ```{r}
 curve(
     dorder_f(x,dist='exp',rate=10)
-  ,-0.002
+  ,0
   ,0.01
   , xlab = parse(text="X_min")
   , ylab = "Density"
@@ -250,12 +288,12 @@ curve(
 )
 ```
 
-
+The minimum of exponential distribution(rate=10) has very tight distribution, one-sided close to 0.
 ```{r}
 curve(
     porder_f(x,dist='exp',rate=10)
-  ,-0.01
-  ,0.08
+  ,0
+  ,0.01
   , xlab = parse(text="X_min")
   , ylab = "Density"
   ,main='Probability distribution of minimum in exponential distribution'
@@ -263,4 +301,4 @@ curve(
 
 ```
 
-
+From the probability  distribution, the probability is more than 90% that the minimum of that exponential distribution of size 200 is less than 0.002. So we can roughly assume the minimum are always near 0.
