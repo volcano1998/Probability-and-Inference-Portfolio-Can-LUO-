@@ -39,6 +39,7 @@ Other settings in the experiment that will not change are:
 
 * Sample size, N = 201
 * Outside the loop estimation
+
 ```{r}
 
 # library
@@ -178,6 +179,7 @@ for (j in 1:nrow(settings)){
 stopCluster(cl)
 
 ```
+
 
 
 # Simulation result
@@ -338,7 +340,7 @@ We can see that when x<0, density of true gamma  is 0 while the density of KDE d
 
 >thoughts: kernal density estimation is a good way to smoothen the density curve, and the trade-off is that it might lost some significant detail of the distribution.
 
-# bootstrap
+## bootstrap
 
 ```{r}
 bts<-settings %>% 
