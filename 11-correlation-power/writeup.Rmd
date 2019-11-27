@@ -196,7 +196,7 @@ We can see that for the same true correlation, the higher the confidence level i
 
 # Conclusion
 
-When true correlation and confidence level is constant , larger sample size makes power higher, so we should collect as much data as posisbel to  meet the demand of confidence level we want to achieve.
+When true correlation and confidence level is constant , larger sample size makes power higher, so we should collect as much data as possible to  meet the demand of confidence level we want to achieve.
 
 
 
